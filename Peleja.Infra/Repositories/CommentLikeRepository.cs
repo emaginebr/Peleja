@@ -6,7 +6,7 @@ using Peleja.Domain.Models;
 using Peleja.Infra.Context;
 using Peleja.Infra.Interfaces.Repositories;
 
-public class CommentLikeRepository : ICommentLikeRepository
+public class CommentLikeRepository : ICommentLikeRepository<CommentLikeModel>
 {
     private readonly PelejaContext _context;
     private readonly IMapper _mapper;

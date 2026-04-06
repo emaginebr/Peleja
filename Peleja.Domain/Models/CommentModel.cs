@@ -29,7 +29,7 @@ public class CommentModel
             LikeCount = 0,
             IsEdited = false,
             IsDeleted = false,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.Now
         };
     }
 
@@ -38,13 +38,13 @@ public class CommentModel
         Content = content;
         GifUrl = gifUrl;
         IsEdited = true;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 
     public void Delete()
     {
         IsDeleted = true;
-        DeletedAt = DateTime.UtcNow;
+        DeletedAt = DateTime.Now;
     }
 
     public void IncrementLikeCount()

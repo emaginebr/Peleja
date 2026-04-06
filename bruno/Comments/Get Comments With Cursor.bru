@@ -1,0 +1,22 @@
+meta {
+  name: Get Comments With Cursor
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/comments?pageUrl={{pageUrl}}&sortBy=recent&pageSize=5&cursor=10
+  body: none
+  auth: none
+}
+
+headers {
+  X-Tenant-Id: {{tenantId}}
+}
+
+params:query {
+  pageUrl: {{pageUrl}}
+  sortBy: recent
+  pageSize: 5
+  cursor: 10
+}

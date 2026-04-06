@@ -14,12 +14,12 @@ public class PageModel
         {
             UserId = userId,
             PageUrl = pageUrl,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.Now
         };
     }
 
     public void Update()
     {
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 }

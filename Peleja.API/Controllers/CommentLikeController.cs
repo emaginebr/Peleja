@@ -11,11 +11,13 @@ public class CommentLikeController : ControllerBase
 {
     private readonly CommentLikeService _commentLikeService;
     private readonly IUserClient _userClient;
+    private readonly ILogger<CommentLikeController> _logger;
 
-    public CommentLikeController(CommentLikeService commentLikeService, IUserClient userClient)
+    public CommentLikeController(CommentLikeService commentLikeService, IUserClient userClient, ILogger<CommentLikeController> logger)
     {
         _commentLikeService = commentLikeService;
         _userClient = userClient;
+        _logger = logger;
     }
 
     [HttpPost("{commentId}/like")]
@@ -38,6 +40,7 @@ public class CommentLikeController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error toggling like for comment {CommentId}", commentId);
             return StatusCode(500, ex.Message);
         }
     }

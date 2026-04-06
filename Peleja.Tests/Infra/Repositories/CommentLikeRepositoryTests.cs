@@ -1,13 +1,14 @@
-namespace Peleja.Tests.Repositories;
+namespace Peleja.Tests.Infra.Repositories;
 
 using FluentAssertions;
 using Peleja.Domain.Models;
 using Peleja.Infra.Context;
 using Peleja.Infra.Repositories;
+using Peleja.Tests.Infra.Context;
 
 public class CommentLikeRepositoryTests
 {
-    private async Task<(PelejaContext context, Infra.Context.Comment comment)> Setup()
+    private async Task<(PelejaContext context, Comment comment)> Setup()
     {
         var context = TestDbContextFactory.Create();
         var page = new Page
@@ -19,7 +20,7 @@ public class CommentLikeRepositoryTests
         context.Pages.Add(page);
         await context.SaveChangesAsync();
 
-        var comment = new Infra.Context.Comment
+        var comment = new Comment
         {
             PageId = page.PageId,
             UserId = 1,
@@ -52,7 +53,7 @@ public class CommentLikeRepositoryTests
     {
         var (context, comment) = await Setup();
         var mapper = TestDbContextFactory.CreateMapper();
-        context.CommentLikes.Add(new Infra.Context.CommentLike
+        context.CommentLikes.Add(new CommentLike
         {
             CommentId = comment.CommentId,
             UserId = 10,
@@ -86,7 +87,7 @@ public class CommentLikeRepositoryTests
     {
         var (context, comment) = await Setup();
         var mapper = TestDbContextFactory.CreateMapper();
-        context.CommentLikes.Add(new Infra.Context.CommentLike
+        context.CommentLikes.Add(new CommentLike
         {
             CommentId = comment.CommentId,
             UserId = 10,
@@ -109,7 +110,7 @@ public class CommentLikeRepositoryTests
     {
         var (context, comment) = await Setup();
         var mapper = TestDbContextFactory.CreateMapper();
-        context.CommentLikes.Add(new Infra.Context.CommentLike
+        context.CommentLikes.Add(new CommentLike
         {
             CommentId = comment.CommentId,
             UserId = 10,

@@ -1,4 +1,4 @@
-namespace Peleja.Tests.Services;
+namespace Peleja.Tests.Domain.Services;
 
 using FluentAssertions;
 using Moq;
@@ -20,7 +20,6 @@ public class GiphyServiceTests
     [Fact]
     public async Task SearchAsync_ReturnsResults()
     {
-        // Arrange
         var expectedResult = new GiphySearchResult
         {
             Items = new List<GiphyItemInfo>
@@ -36,10 +35,8 @@ public class GiphyServiceTests
             .Setup(s => s.SearchAsync("cat", 20, 0))
             .ReturnsAsync(expectedResult);
 
-        // Act
         var result = await _service.SearchAsync("cat", 20, 0);
 
-        // Assert
         result.Should().NotBeNull();
         result.Items.Should().HaveCount(1);
         result.Items[0].Id.Should().Be("abc123");
@@ -50,29 +47,24 @@ public class GiphyServiceTests
     [Fact]
     public async Task SearchAsync_WithEmptyQuery_ThrowsArgumentException()
     {
-        // Act
         var act = () => _service.SearchAsync("", 20, 0);
 
-        // Assert
         await act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*busca*obrigatório*");
+            .WithMessage("*query*required*");
     }
 
     [Fact]
     public async Task SearchAsync_WithWhitespaceQuery_ThrowsArgumentException()
     {
-        // Act
         var act = () => _service.SearchAsync("   ", 20, 0);
 
-        // Assert
         await act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*busca*obrigatório*");
+            .WithMessage("*query*required*");
     }
 
     [Fact]
     public async Task SearchAsync_ClampsLimitToMinimum1()
     {
-        // Arrange
         var expectedResult = new GiphySearchResult
         {
             Items = new List<GiphyItemInfo>(),
@@ -85,17 +77,14 @@ public class GiphyServiceTests
             .Setup(s => s.SearchAsync("cat", 1, 0))
             .ReturnsAsync(expectedResult);
 
-        // Act
         var result = await _service.SearchAsync("cat", -5, 0);
 
-        // Assert
         _giphyAppServiceMock.Verify(s => s.SearchAsync("cat", 1, 0), Times.Once);
     }
 
     [Fact]
     public async Task SearchAsync_ClampsLimitToMaximum50()
     {
-        // Arrange
         var expectedResult = new GiphySearchResult
         {
             Items = new List<GiphyItemInfo>(),
@@ -108,10 +97,8 @@ public class GiphyServiceTests
             .Setup(s => s.SearchAsync("cat", 50, 0))
             .ReturnsAsync(expectedResult);
 
-        // Act
         var result = await _service.SearchAsync("cat", 100, 0);
 
-        // Assert
         _giphyAppServiceMock.Verify(s => s.SearchAsync("cat", 50, 0), Times.Once);
     }
 }

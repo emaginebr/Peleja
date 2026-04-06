@@ -16,6 +16,9 @@
 .env.prod
 .env.local
 
+# Test settings with secrets
+**/appsettings.Testing.json
+
 # SSL certificates
 nginx/certs/
 *.pem

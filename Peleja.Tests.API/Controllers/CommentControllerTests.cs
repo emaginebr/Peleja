@@ -1,5 +1,6 @@
 namespace Peleja.Tests.API.Controllers;
 
+using System.Text.Json;
 using FluentAssertions;
 using Flurl.Http;
 using Peleja.Tests.API.Config;
@@ -8,59 +9,44 @@ using Peleja.Tests.API.Config;
 public class CommentControllerTests
 {
     private readonly AuthFixture _auth;
-    private readonly TestSettings _settings;
 
     public CommentControllerTests(AuthFixture auth)
     {
         _auth = auth;
-        _settings = auth.Settings;
     }
 
     [Fact]
     public async Task GetComments_ReturnsOk_WithoutAuth()
     {
-        // Arrange & Act
-        var response = await $"{_settings.BaseUrl}/api/v1/comments"
-            .WithHeader("X-Tenant-Id", _settings.TenantId)
+        var response = await _auth.CreateAnonymousRequest("/api/v1/comments")
             .SetQueryParam("pageUrl", "https://example.com/test-page")
             .AllowAnyHttpStatus()
             .GetAsync();
 
-        // Assert
         response.StatusCode.Should().Be(200);
     }
 
     [Fact]
     public async Task GetComments_ReturnsPaginated_WithCursor()
     {
-        // Arrange & Act
-        var response = await $"{_settings.BaseUrl}/api/v1/comments"
-            .WithHeader("X-Tenant-Id", _settings.TenantId)
+        var response = await _auth.CreateAnonymousRequest("/api/v1/comments")
             .SetQueryParam("pageUrl", "https://example.com/test-page")
             .SetQueryParam("sortBy", "recent")
             .SetQueryParam("pageSize", 5)
             .AllowAnyHttpStatus()
             .GetAsync();
 
-        // Assert
         response.StatusCode.Should().Be(200);
-        var body = await response.GetJsonAsync<dynamic>();
-        ((bool)body.sucesso).Should().BeTrue();
+        var json = await response.GetStringAsync();
+        var body = JsonDocument.Parse(json).RootElement;
+        body.TryGetProperty("items", out _).Should().BeTrue();
+        body.TryGetProperty("hasMore", out _).Should().BeTrue();
     }
 
     [Fact]
     public async Task CreateComment_Returns201_WithAuth()
     {
-        if (string.IsNullOrEmpty(_auth.Token))
-        {
-            // Skip test if auth is not available
-            return;
-        }
-
-        // Arrange & Act
-        var response = await $"{_settings.BaseUrl}/api/v1/comments"
-            .WithHeader("X-Tenant-Id", _settings.TenantId)
-            .WithOAuthBearerToken(_auth.Token)
+        var response = await _auth.CreateAuthenticatedRequest("/api/v1/comments")
             .AllowAnyHttpStatus()
             .PostJsonAsync(new
             {
@@ -68,16 +54,13 @@ public class CommentControllerTests
                 content = "Integration test comment"
             });
 
-        // Assert
         response.StatusCode.Should().Be(201);
     }
 
     [Fact]
     public async Task CreateComment_Returns401_WithoutAuth()
     {
-        // Arrange & Act
-        var response = await $"{_settings.BaseUrl}/api/v1/comments"
-            .WithHeader("X-Tenant-Id", _settings.TenantId)
+        var response = await _auth.CreateAnonymousRequest("/api/v1/comments")
             .AllowAnyHttpStatus()
             .PostJsonAsync(new
             {
@@ -85,22 +68,13 @@ public class CommentControllerTests
                 content = "Unauthorized comment"
             });
 
-        // Assert
         response.StatusCode.Should().Be(401);
     }
 
     [Fact]
     public async Task UpdateComment_Returns200_ByAuthor()
     {
-        if (string.IsNullOrEmpty(_auth.Token))
-        {
-            return;
-        }
-
-        // Arrange - first create a comment
-        var createResponse = await $"{_settings.BaseUrl}/api/v1/comments"
-            .WithHeader("X-Tenant-Id", _settings.TenantId)
-            .WithOAuthBearerToken(_auth.Token)
+        var createResponse = await _auth.CreateAuthenticatedRequest("/api/v1/comments")
             .AllowAnyHttpStatus()
             .PostJsonAsync(new
             {
@@ -108,38 +82,25 @@ public class CommentControllerTests
                 content = "Comment to update"
             });
 
-        if (createResponse.StatusCode != 201)
-            return;
+        createResponse.StatusCode.Should().Be(201);
 
-        var createBody = await createResponse.GetJsonAsync<dynamic>();
-        long commentId = (long)createBody.dados.commentId;
+        var createJson = await createResponse.GetStringAsync();
+        var commentId = JsonDocument.Parse(createJson).RootElement.GetProperty("commentId").GetInt64();
 
-        // Act
-        var response = await $"{_settings.BaseUrl}/api/v1/comments/{commentId}"
-            .WithHeader("X-Tenant-Id", _settings.TenantId)
-            .WithOAuthBearerToken(_auth.Token)
+        var response = await _auth.CreateAuthenticatedRequest($"/api/v1/comments/{commentId}")
             .AllowAnyHttpStatus()
             .PutJsonAsync(new
             {
                 content = "Updated comment content"
             });
 
-        // Assert
         response.StatusCode.Should().Be(200);
     }
 
     [Fact]
-    public async Task DeleteComment_Returns200_ByAuthor()
+    public async Task DeleteComment_Returns204_ByAuthor()
     {
-        if (string.IsNullOrEmpty(_auth.Token))
-        {
-            return;
-        }
-
-        // Arrange - first create a comment
-        var createResponse = await $"{_settings.BaseUrl}/api/v1/comments"
-            .WithHeader("X-Tenant-Id", _settings.TenantId)
-            .WithOAuthBearerToken(_auth.Token)
+        var createResponse = await _auth.CreateAuthenticatedRequest("/api/v1/comments")
             .AllowAnyHttpStatus()
             .PostJsonAsync(new
             {
@@ -147,20 +108,15 @@ public class CommentControllerTests
                 content = "Comment to delete"
             });
 
-        if (createResponse.StatusCode != 201)
-            return;
+        createResponse.StatusCode.Should().Be(201);
 
-        var createBody = await createResponse.GetJsonAsync<dynamic>();
-        long commentId = (long)createBody.dados.commentId;
+        var createJson = await createResponse.GetStringAsync();
+        var commentId = JsonDocument.Parse(createJson).RootElement.GetProperty("commentId").GetInt64();
 
-        // Act
-        var response = await $"{_settings.BaseUrl}/api/v1/comments/{commentId}"
-            .WithHeader("X-Tenant-Id", _settings.TenantId)
-            .WithOAuthBearerToken(_auth.Token)
+        var response = await _auth.CreateAuthenticatedRequest($"/api/v1/comments/{commentId}")
             .AllowAnyHttpStatus()
             .DeleteAsync();
 
-        // Assert
-        response.StatusCode.Should().Be(200);
+        response.StatusCode.Should().Be(204);
     }
 }

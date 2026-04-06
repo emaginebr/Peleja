@@ -1,5 +1,8 @@
 namespace Peleja.Infra.Interfaces.AppServices;
 
-public interface IGiphyAppService : Domain.Interfaces.AppServices.IGiphyAppService
+using Peleja.DTO;
+
+public interface IGiphyAppService
 {
+    Task<GiphySearchResult> SearchAsync(string query, int limit = 20, int offset = 0);
 }

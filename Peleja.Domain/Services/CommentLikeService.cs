@@ -3,17 +3,17 @@ namespace Peleja.Domain.Services;
 using AutoMapper;
 using Peleja.Domain.Models;
 using Peleja.DTO;
-using Peleja.Domain.Interfaces.Repositories;
+using Peleja.Infra.Interfaces.Repositories;
 
 public class CommentLikeService
 {
-    private readonly ICommentLikeRepository _commentLikeRepository;
-    private readonly ICommentRepository _commentRepository;
+    private readonly ICommentLikeRepository<CommentLikeModel> _commentLikeRepository;
+    private readonly ICommentRepository<CommentModel> _commentRepository;
     private readonly IMapper _mapper;
 
     public CommentLikeService(
-        ICommentLikeRepository commentLikeRepository,
-        ICommentRepository commentRepository,
+        ICommentLikeRepository<CommentLikeModel> commentLikeRepository,
+        ICommentRepository<CommentModel> commentRepository,
         IMapper mapper)
     {
         _commentLikeRepository = commentLikeRepository;
@@ -25,7 +25,7 @@ public class CommentLikeService
     {
         var comment = await _commentRepository.GetByIdAsync(commentId);
         if (comment == null)
-            throw new KeyNotFoundException("Comentário não encontrado");
+            throw new KeyNotFoundException("Comment not found");
 
         var existingLike = await _commentLikeRepository.GetAsync(commentId, userId);
 

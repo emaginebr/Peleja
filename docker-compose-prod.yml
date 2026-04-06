@@ -10,38 +10,19 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__PelejaContext: ${CONNECTION_STRING}
+      NAuth__ApiURL: ${NAUTH_API_URL}
+      NAuth__JwtSecret: ${EMAGINE_JWT_SECRET}
+      NAuth__BucketName: ${EMAGINE_BUCKET_NAME}
+      Tenants__emagine__ConnectionString: ${EMAGINE_CONNECTION_STRING}
+      Tenants__emagine__JwtSecret: ${EMAGINE_JWT_SECRET}
+      Tenants__emagine__BucketName: ${EMAGINE_BUCKET_NAME}
+      Tenants__peleja__ConnectionString: ${PELEJA_CONNECTION_STRING}
+      Tenants__peleja__JwtSecret: ${PELEJA_JWT_SECRET}
+      Tenants__peleja__BucketName: ${PELEJA_BUCKET_NAME}
       GIPHY_API_KEY: ${GIPHY_API_KEY}
-    depends_on:
-      db:
-        condition: service_healthy
     networks:
-      - peleja-network
-      - peleja-external
-
-  db:
-    image: postgres:17-alpine
-    container_name: peleja-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - peleja-network
-
-volumes:
-  postgres_data:
+      - emagine-network
 
 networks:
-  peleja-network:
-    driver: bridge
-  peleja-external:
+  emagine-network:
     external: true

@@ -1,7 +1,7 @@
 namespace Peleja.Domain.Services;
 
 using Peleja.DTO;
-using Peleja.Domain.Interfaces.AppServices;
+using Peleja.Infra.Interfaces.AppServices;
 
 public class GiphyService
 {
@@ -15,7 +15,7 @@ public class GiphyService
     public async Task<GiphySearchResult> SearchAsync(string query, int limit = 20, int offset = 0)
     {
         if (string.IsNullOrWhiteSpace(query))
-            throw new ArgumentException("O termo de busca é obrigatório");
+            throw new ArgumentException("Search query is required");
 
         limit = Math.Clamp(limit, 1, 50);
         offset = Math.Max(0, offset);

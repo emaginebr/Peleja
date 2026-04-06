@@ -1,4 +1,4 @@
-namespace Peleja.Tests.Services;
+namespace Peleja.Tests.Domain.Services;
 
 using AutoMapper;
 using FluentAssertions;
@@ -10,14 +10,14 @@ using Peleja.Infra.Interfaces.Repositories;
 
 public class CommentLikeServiceTests
 {
-    private readonly Mock<ICommentLikeRepository> _commentLikeRepoMock;
-    private readonly Mock<ICommentRepository> _commentRepoMock;
+    private readonly Mock<ICommentLikeRepository<CommentLikeModel>> _commentLikeRepoMock;
+    private readonly Mock<ICommentRepository<CommentModel>> _commentRepoMock;
     private readonly CommentLikeService _service;
 
     public CommentLikeServiceTests()
     {
-        _commentLikeRepoMock = new Mock<ICommentLikeRepository>();
-        _commentRepoMock = new Mock<ICommentRepository>();
+        _commentLikeRepoMock = new Mock<ICommentLikeRepository<CommentLikeModel>>();
+        _commentRepoMock = new Mock<ICommentRepository<CommentModel>>();
         var mapper = new MapperConfiguration(cfg =>
         {
             cfg.AddProfile<CommentResultProfile>();
@@ -83,6 +83,6 @@ public class CommentLikeServiceTests
         var act = () => _service.ToggleLikeAsync(999, 10);
 
         await act.Should().ThrowAsync<KeyNotFoundException>()
-            .WithMessage("*não encontrado*");
+            .WithMessage("*not found*");
     }
 }

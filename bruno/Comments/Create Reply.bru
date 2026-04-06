@@ -1,0 +1,27 @@
+meta {
+  name: Create Reply
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/comments
+  body: json
+  auth: bearer
+}
+
+headers {
+  X-Tenant-Id: {{tenantId}}
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "pageUrl": "{{pageUrl}}",
+    "content": "This is a reply to a comment",
+    "parentCommentId": {{commentId}}
+  }
+}

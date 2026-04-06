@@ -1,4 +1,4 @@
-namespace Peleja.Tests.Repositories;
+namespace Peleja.Tests.Infra.Context;
 
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;

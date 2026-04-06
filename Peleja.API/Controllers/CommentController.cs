@@ -12,11 +12,13 @@ public class CommentController : ControllerBase
 {
     private readonly CommentService _commentService;
     private readonly IUserClient _userClient;
+    private readonly ILogger<CommentController> _logger;
 
-    public CommentController(CommentService commentService, IUserClient userClient)
+    public CommentController(CommentService commentService, IUserClient userClient, ILogger<CommentController> logger)
     {
         _commentService = commentService;
         _userClient = userClient;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -30,7 +32,7 @@ public class CommentController : ControllerBase
         try
         {
             if (string.IsNullOrWhiteSpace(pageUrl))
-                return BadRequest("O parâmetro pageUrl é obrigatório");
+                return BadRequest("The pageUrl parameter is required");
 
             long? currentUserId = null;
             var userSession = _userClient.GetUserInSession(HttpContext);
@@ -48,6 +50,7 @@ public class CommentController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error getting comments for pageUrl={PageUrl}", pageUrl);
             return StatusCode(500, ex.Message);
         }
     }
@@ -76,6 +79,7 @@ public class CommentController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error creating comment");
             return StatusCode(500, ex.Message);
         }
     }
@@ -108,6 +112,7 @@ public class CommentController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error updating comment {CommentId}", commentId);
             return StatusCode(500, ex.Message);
         }
     }
@@ -136,6 +141,7 @@ public class CommentController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error deleting comment {CommentId}", commentId);
             return StatusCode(500, ex.Message);
         }
     }

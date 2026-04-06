@@ -1,0 +1,21 @@
+meta {
+  name: Get Comments Popular
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/comments?pageUrl={{pageUrl}}&sortBy=popular&pageSize=15
+  body: none
+  auth: none
+}
+
+headers {
+  X-Tenant-Id: {{tenantId}}
+}
+
+params:query {
+  pageUrl: {{pageUrl}}
+  sortBy: popular
+  pageSize: 15
+}

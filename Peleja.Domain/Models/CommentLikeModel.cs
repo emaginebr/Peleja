@@ -13,7 +13,7 @@ public class CommentLikeModel
         {
             CommentId = commentId,
             UserId = userId,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.Now
         };
     }
 }

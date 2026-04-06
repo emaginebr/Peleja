@@ -1,0 +1,32 @@
+meta {
+  name: Create Comment
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/comments
+  body: json
+  auth: bearer
+}
+
+headers {
+  X-Tenant-Id: {{tenantId}}
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "pageUrl": "{{pageUrl}}",
+    "content": "This is a test comment"
+  }
+}
+
+vars:pre-request {
+  baseUrl: http://localhost:5000
+  tenantId: emagine
+  pageUrl: http://emagine.com.br
+}

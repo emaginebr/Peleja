@@ -1,7 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\Peleja.Domain\Peleja.Domain.csproj" />
+    <ProjectReference Include="..\Peleja.DTO\Peleja.DTO.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

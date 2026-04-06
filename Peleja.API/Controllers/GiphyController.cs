@@ -9,10 +9,12 @@ using Peleja.Domain.Services;
 public class GiphyController : ControllerBase
 {
     private readonly GiphyService _giphyService;
+    private readonly ILogger<GiphyController> _logger;
 
-    public GiphyController(GiphyService giphyService)
+    public GiphyController(GiphyService giphyService, ILogger<GiphyController> logger)
     {
         _giphyService = giphyService;
+        _logger = logger;
     }
 
     [HttpGet("search")]
@@ -25,7 +27,7 @@ public class GiphyController : ControllerBase
         try
         {
             if (string.IsNullOrWhiteSpace(q))
-                return BadRequest("O parâmetro q é obrigatório");
+                return BadRequest("The q parameter is required");
 
             var result = await _giphyService.SearchAsync(q, limit, offset);
 
@@ -35,14 +37,16 @@ public class GiphyController : ControllerBase
         {
             return BadRequest(ex.Message);
         }
-        catch (HttpRequestException)
+        catch (HttpRequestException ex)
         {
+            _logger.LogError(ex, "Giphy API unavailable");
             return Problem(
-                detail: "Serviço de GIFs temporariamente indisponível. Tente novamente em alguns instantes.",
+                detail: "GIF service temporarily unavailable. Please try again later.",
                 statusCode: 503);
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error searching Giphy for query={Query}", q);
             return StatusCode(500, ex.Message);
         }
     }

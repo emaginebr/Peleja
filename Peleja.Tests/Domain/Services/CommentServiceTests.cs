@@ -1,4 +1,4 @@
-namespace Peleja.Tests.Services;
+namespace Peleja.Tests.Domain.Services;
 
 using AutoMapper;
 using FluentAssertions;
@@ -11,16 +11,16 @@ using Peleja.Infra.Interfaces.Repositories;
 
 public class CommentServiceTests
 {
-    private readonly Mock<ICommentRepository> _commentRepoMock;
-    private readonly Mock<ICommentLikeRepository> _commentLikeRepoMock;
-    private readonly Mock<IPageRepository> _pageRepoMock;
+    private readonly Mock<ICommentRepository<CommentModel>> _commentRepoMock;
+    private readonly Mock<ICommentLikeRepository<CommentLikeModel>> _commentLikeRepoMock;
+    private readonly Mock<IPageRepository<PageModel>> _pageRepoMock;
     private readonly CommentService _service;
 
     public CommentServiceTests()
     {
-        _commentRepoMock = new Mock<ICommentRepository>();
-        _commentLikeRepoMock = new Mock<ICommentLikeRepository>();
-        _pageRepoMock = new Mock<IPageRepository>();
+        _commentRepoMock = new Mock<ICommentRepository<CommentModel>>();
+        _commentLikeRepoMock = new Mock<ICommentLikeRepository<CommentLikeModel>>();
+        _pageRepoMock = new Mock<IPageRepository<PageModel>>();
         var mapper = new MapperConfiguration(cfg =>
         {
             cfg.AddProfile<CommentResultProfile>();
@@ -130,7 +130,7 @@ public class CommentServiceTests
         var act = () => _service.CreateAsync(10, info);
 
         await act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*conteúdo*obrigatório*");
+            .WithMessage("*Content*required*");
     }
 
     [Fact]
@@ -145,7 +145,7 @@ public class CommentServiceTests
         var act = () => _service.CreateAsync(10, info);
 
         await act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*máximo 2000*");
+            .WithMessage("*2000 characters*");
     }
 
     [Fact]
@@ -171,7 +171,7 @@ public class CommentServiceTests
         var act = () => _service.CreateAsync(10, info);
 
         await act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*responder a uma resposta*");
+            .WithMessage("*reply to a reply*");
     }
 
     #endregion
@@ -212,7 +212,7 @@ public class CommentServiceTests
         var act = () => _service.UpdateAsync(1, 99, info);
 
         await act.Should().ThrowAsync<UnauthorizedAccessException>()
-            .WithMessage("*autor*editar*");
+            .WithMessage("*author*edit*");
     }
 
     #endregion
@@ -262,7 +262,7 @@ public class CommentServiceTests
         var act = () => _service.DeleteAsync(1, 99, false);
 
         await act.Should().ThrowAsync<UnauthorizedAccessException>()
-            .WithMessage("*permissão*excluir*");
+            .WithMessage("*permission*delete*");
     }
 
     #endregion

@@ -1,0 +1,25 @@
+meta {
+  name: Search GIFs
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/giphy/search?q=funny&limit=20&offset=0
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Tenant-Id: {{tenantId}}
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+params:query {
+  q: funny
+  limit: 20
+  offset: 0
+}

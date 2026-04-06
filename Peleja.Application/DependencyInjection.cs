@@ -9,8 +9,9 @@ using Peleja.Domain.Services;
 using Peleja.Infra.Context;
 using Peleja.Infra.Repositories;
 using Peleja.Infra.AppServices;
-using InfraInterfaces = Peleja.Infra.Interfaces;
-using DomainInterfaces = Peleja.Domain.Interfaces;
+using Peleja.Domain.Models;
+using Peleja.Infra.Interfaces.Repositories;
+using Peleja.Infra.Interfaces.AppServices;
 
 public static class DependencyInjection
 {
@@ -41,17 +42,12 @@ public static class DependencyInjection
             typeof(Peleja.Domain.Mappings.CommentResultProfile));
 
         // Repositories
-        services.AddScoped<InfraInterfaces.Repositories.IPageRepository, PageRepository>();
-        services.AddScoped<InfraInterfaces.Repositories.ICommentRepository, CommentRepository>();
-        services.AddScoped<InfraInterfaces.Repositories.ICommentLikeRepository, CommentLikeRepository>();
-
-        services.AddScoped<DomainInterfaces.Repositories.IPageRepository, PageRepository>();
-        services.AddScoped<DomainInterfaces.Repositories.ICommentRepository, CommentRepository>();
-        services.AddScoped<DomainInterfaces.Repositories.ICommentLikeRepository, CommentLikeRepository>();
+        services.AddScoped<IPageRepository<PageModel>, PageRepository>();
+        services.AddScoped<ICommentRepository<CommentModel>, CommentRepository>();
+        services.AddScoped<ICommentLikeRepository<CommentLikeModel>, CommentLikeRepository>();
 
         // AppServices
-        services.AddScoped<InfraInterfaces.AppServices.IGiphyAppService, GiphyAppService>();
-        services.AddScoped<DomainInterfaces.AppServices.IGiphyAppService, GiphyAppService>();
+        services.AddScoped<IGiphyAppService, GiphyAppService>();
 
         // Domain Services
         services.AddScoped<CommentService>();

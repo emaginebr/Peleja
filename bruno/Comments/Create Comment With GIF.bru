@@ -1,0 +1,27 @@
+meta {
+  name: Create Comment With GIF
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/comments
+  body: json
+  auth: bearer
+}
+
+headers {
+  X-Tenant-Id: {{tenantId}}
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "pageUrl": "{{pageUrl}}",
+    "content": "Check out this GIF!",
+    "gifUrl": "https://media.giphy.com/media/example/giphy.gif"
+  }
+}

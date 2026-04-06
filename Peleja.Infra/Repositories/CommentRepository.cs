@@ -6,7 +6,7 @@ using Peleja.Domain.Models;
 using Peleja.Infra.Context;
 using Peleja.Infra.Interfaces.Repositories;
 
-public class CommentRepository : ICommentRepository
+public class CommentRepository : ICommentRepository<CommentModel>
 {
     private readonly PelejaContext _context;
     private readonly IMapper _mapper;
@@ -89,7 +89,7 @@ public class CommentRepository : ICommentRepository
             .FirstOrDefaultAsync(c => c.CommentId == comment.CommentId);
 
         if (entity == null)
-            throw new KeyNotFoundException("Comentário não encontrado");
+            throw new KeyNotFoundException("Comment not found");
 
         _mapper.Map(comment, entity);
         await _context.SaveChangesAsync();

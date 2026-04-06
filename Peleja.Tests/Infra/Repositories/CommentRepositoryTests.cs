@@ -1,9 +1,10 @@
-namespace Peleja.Tests.Repositories;
+namespace Peleja.Tests.Infra.Repositories;
 
 using FluentAssertions;
 using Peleja.Domain.Models;
 using Peleja.Infra.Context;
 using Peleja.Infra.Repositories;
+using Peleja.Tests.Infra.Context;
 
 public class CommentRepositoryTests
 {
@@ -42,7 +43,7 @@ public class CommentRepositoryTests
     {
         var (context, page) = await SetupWithPage();
         var mapper = TestDbContextFactory.CreateMapper();
-        context.Comments.Add(new Infra.Context.Comment
+        context.Comments.Add(new Comment
         {
             PageId = page.PageId,
             UserId = 1,
@@ -65,7 +66,7 @@ public class CommentRepositoryTests
     {
         var (context, page) = await SetupWithPage();
         var mapper = TestDbContextFactory.CreateMapper();
-        var root = new Infra.Context.Comment
+        var root = new Comment
         {
             PageId = page.PageId,
             UserId = 1,
@@ -75,7 +76,7 @@ public class CommentRepositoryTests
         context.Comments.Add(root);
         await context.SaveChangesAsync();
 
-        context.Comments.Add(new Infra.Context.Comment
+        context.Comments.Add(new Comment
         {
             PageId = page.PageId,
             UserId = 1,
@@ -99,14 +100,14 @@ public class CommentRepositoryTests
     {
         var (context, page) = await SetupWithPage();
         var mapper = TestDbContextFactory.CreateMapper();
-        context.Comments.Add(new Infra.Context.Comment
+        context.Comments.Add(new Comment
         {
             PageId = page.PageId,
             UserId = 1,
             Content = "Visible comment",
             CreatedAt = DateTime.UtcNow
         });
-        context.Comments.Add(new Infra.Context.Comment
+        context.Comments.Add(new Comment
         {
             PageId = page.PageId,
             UserId = 1,
@@ -132,7 +133,7 @@ public class CommentRepositoryTests
         var mapper = TestDbContextFactory.CreateMapper();
         for (int i = 1; i <= 3; i++)
         {
-            context.Comments.Add(new Infra.Context.Comment
+            context.Comments.Add(new Comment
             {
                 PageId = page.PageId,
                 UserId = 1,
@@ -159,7 +160,7 @@ public class CommentRepositoryTests
         var mapper = TestDbContextFactory.CreateMapper();
         for (int i = 0; i < 5; i++)
         {
-            context.Comments.Add(new Infra.Context.Comment
+            context.Comments.Add(new Comment
             {
                 PageId = page.PageId,
                 UserId = 1,
@@ -182,7 +183,7 @@ public class CommentRepositoryTests
     {
         var (context, page) = await SetupWithPage();
         var mapper = TestDbContextFactory.CreateMapper();
-        context.Comments.Add(new Infra.Context.Comment
+        context.Comments.Add(new Comment
         {
             PageId = page.PageId,
             UserId = 1,

@@ -3,19 +3,19 @@ namespace Peleja.Domain.Services;
 using AutoMapper;
 using Peleja.Domain.Models;
 using Peleja.DTO;
-using Peleja.Domain.Interfaces.Repositories;
+using Peleja.Infra.Interfaces.Repositories;
 
 public class CommentService
 {
-    private readonly ICommentRepository _commentRepository;
-    private readonly ICommentLikeRepository _commentLikeRepository;
-    private readonly IPageRepository _pageRepository;
+    private readonly ICommentRepository<CommentModel> _commentRepository;
+    private readonly ICommentLikeRepository<CommentLikeModel> _commentLikeRepository;
+    private readonly IPageRepository<PageModel> _pageRepository;
     private readonly IMapper _mapper;
 
     public CommentService(
-        ICommentRepository commentRepository,
-        ICommentLikeRepository commentLikeRepository,
-        IPageRepository pageRepository,
+        ICommentRepository<CommentModel> commentRepository,
+        ICommentLikeRepository<CommentLikeModel> commentLikeRepository,
+        IPageRepository<PageModel> pageRepository,
         IMapper mapper)
     {
         _commentRepository = commentRepository;
@@ -65,15 +65,15 @@ public class CommentService
     public async Task<CommentResult> CreateAsync(long userId, CommentInsertInfo info)
     {
         if (string.IsNullOrWhiteSpace(info.Content))
-            throw new ArgumentException("O conteúdo é obrigatório");
+            throw new ArgumentException("Content is required");
         if (info.Content.Length > 2000)
-            throw new ArgumentException("O conteúdo deve ter no máximo 2000 caracteres");
+            throw new ArgumentException("Content must not exceed 2000 characters");
         if (string.IsNullOrWhiteSpace(info.PageUrl))
-            throw new ArgumentException("A URL da página é obrigatória");
+            throw new ArgumentException("Page URL is required");
         if (info.PageUrl.Length > 2000)
-            throw new ArgumentException("A URL da página deve ter no máximo 2000 caracteres");
+            throw new ArgumentException("Page URL must not exceed 2000 characters");
         if (info.GifUrl != null && info.GifUrl.Length > 500)
-            throw new ArgumentException("A URL do GIF deve ter no máximo 500 caracteres");
+            throw new ArgumentException("GIF URL must not exceed 500 characters");
 
         var page = await _pageRepository.GetByUrlAsync(info.PageUrl);
         if (page == null)
@@ -86,11 +86,11 @@ public class CommentService
         {
             var parent = await _commentRepository.GetByIdAsync(info.ParentCommentId.Value);
             if (parent == null)
-                throw new KeyNotFoundException("Comentário pai não encontrado");
+                throw new KeyNotFoundException("Parent comment not found");
             if (parent.IsReply())
-                throw new ArgumentException("Não é possível responder a uma resposta");
+                throw new ArgumentException("Cannot reply to a reply");
             if (parent.PageId != page.PageId)
-                throw new ArgumentException("Comentário pai pertence a outra página");
+                throw new ArgumentException("Parent comment belongs to a different page");
         }
 
         var comment = CommentModel.Create(page.PageId, userId, info.Content, info.GifUrl, info.ParentCommentId);
@@ -103,16 +103,16 @@ public class CommentService
     {
         var comment = await _commentRepository.GetByIdAsync(commentId);
         if (comment == null)
-            throw new KeyNotFoundException("Comentário não encontrado");
+            throw new KeyNotFoundException("Comment not found");
         if (!comment.IsOwnedBy(userId))
-            throw new UnauthorizedAccessException("Apenas o autor pode editar o comentário");
+            throw new UnauthorizedAccessException("Only the author can edit this comment");
 
         if (string.IsNullOrWhiteSpace(info.Content))
-            throw new ArgumentException("O conteúdo é obrigatório");
+            throw new ArgumentException("Content is required");
         if (info.Content.Length > 2000)
-            throw new ArgumentException("O conteúdo deve ter no máximo 2000 caracteres");
+            throw new ArgumentException("Content must not exceed 2000 characters");
         if (info.GifUrl != null && info.GifUrl.Length > 500)
-            throw new ArgumentException("A URL do GIF deve ter no máximo 500 caracteres");
+            throw new ArgumentException("GIF URL must not exceed 500 characters");
 
         comment.Update(info.Content, info.GifUrl);
 
@@ -124,10 +124,10 @@ public class CommentService
     {
         var comment = await _commentRepository.GetByIdAsync(commentId);
         if (comment == null)
-            throw new KeyNotFoundException("Comentário não encontrado");
+            throw new KeyNotFoundException("Comment not found");
 
         if (!comment.IsOwnedBy(userId) && !isAdmin)
-            throw new UnauthorizedAccessException("Sem permissão para excluir este comentário");
+            throw new UnauthorizedAccessException("You do not have permission to delete this comment");
 
         comment.Delete();
         await _commentRepository.UpdateAsync(comment);
@@ -139,7 +139,7 @@ public class CommentService
 
         if (comment.IsDeleted)
         {
-            result.Content = "[Comentário removido]";
+            result.Content = "[Comment removed]";
             result.GifUrl = null;
             result.LikeCount = 0;
             result.UserId = 0;

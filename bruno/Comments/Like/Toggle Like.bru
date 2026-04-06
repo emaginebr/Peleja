@@ -1,0 +1,19 @@
+meta {
+  name: Toggle Like
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/comments/{{commentId}}/like
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Tenant-Id: {{tenantId}}
+}
+
+auth:bearer {
+  token: {{token}}
+}

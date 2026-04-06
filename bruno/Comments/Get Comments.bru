@@ -1,0 +1,21 @@
+meta {
+  name: Get Comments
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/comments?pageUrl={{pageUrl}}&sortBy=recent&pageSize=15
+  body: none
+  auth: none
+}
+
+headers {
+  X-Tenant-Id: {{tenantId}}
+}
+
+params:query {
+  pageUrl: {{pageUrl}}
+  sortBy: recent
+  pageSize: 15
+}
