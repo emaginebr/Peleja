@@ -6,4 +6,12 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="AutoMapper" Version="13.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Peleja.DTO\Peleja.DTO.csproj" />
+  </ItemGroup>
+
 </Project>

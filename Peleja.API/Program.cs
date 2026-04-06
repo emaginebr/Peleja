@@ -6,11 +6,8 @@ using Peleja.Application;
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
 
-// Application layer DI (DbContext, Repositories, Services, HttpClient)
+// Application layer DI (Tenant, DbContext, Repositories, Services, HttpClient)
 builder.Services.AddApplication(configuration);
-
-// Tenant context
-builder.Services.AddScoped<TenantContext>();
 
 // NAuth
 builder.Services.AddNAuth();

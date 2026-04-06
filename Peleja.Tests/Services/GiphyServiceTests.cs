@@ -2,7 +2,7 @@ namespace Peleja.Tests.Services;
 
 using FluentAssertions;
 using Moq;
-using Peleja.Domain.Models.DTOs;
+using Peleja.DTO;
 using Peleja.Domain.Services;
 using Peleja.Infra.Interfaces.AppServices;
 

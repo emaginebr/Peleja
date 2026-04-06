@@ -4,8 +4,8 @@ using Peleja.Domain.Models;
 
 public interface ICommentLikeRepository
 {
-    Task<CommentLike?> GetAsync(long commentId, long userId);
-    Task<CommentLike> CreateAsync(CommentLike commentLike);
-    Task DeleteAsync(CommentLike commentLike);
+    Task<CommentLikeModel?> GetAsync(long commentId, long userId);
+    Task<CommentLikeModel> CreateAsync(CommentLikeModel commentLike);
+    Task DeleteAsync(CommentLikeModel commentLike);
     Task<bool> ExistsAsync(long commentId, long userId);
 }

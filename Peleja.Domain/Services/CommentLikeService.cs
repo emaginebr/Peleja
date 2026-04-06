@@ -1,20 +1,24 @@
 namespace Peleja.Domain.Services;
 
+using AutoMapper;
 using Peleja.Domain.Models;
-using Peleja.Domain.Models.DTOs;
+using Peleja.DTO;
 using Peleja.Domain.Interfaces.Repositories;
 
 public class CommentLikeService
 {
     private readonly ICommentLikeRepository _commentLikeRepository;
     private readonly ICommentRepository _commentRepository;
+    private readonly IMapper _mapper;
 
     public CommentLikeService(
         ICommentLikeRepository commentLikeRepository,
-        ICommentRepository commentRepository)
+        ICommentRepository commentRepository,
+        IMapper mapper)
     {
         _commentLikeRepository = commentLikeRepository;
         _commentRepository = commentRepository;
+        _mapper = mapper;
     }
 
     public async Task<CommentLikeResult> ToggleLikeAsync(long commentId, long userId)
@@ -27,37 +31,24 @@ public class CommentLikeService
 
         if (existingLike != null)
         {
-            // Unlike - remove
             await _commentLikeRepository.DeleteAsync(existingLike);
-            comment.LikeCount = Math.Max(0, comment.LikeCount - 1);
+            comment.DecrementLikeCount();
             await _commentRepository.UpdateAsync(comment);
 
-            return new CommentLikeResult
-            {
-                CommentId = commentId,
-                LikeCount = comment.LikeCount,
-                IsLikedByUser = false
-            };
+            var result = _mapper.Map<CommentLikeResult>(comment);
+            result.IsLikedByUser = false;
+            return result;
         }
         else
         {
-            // Like - add
-            var like = new CommentLike
-            {
-                CommentId = commentId,
-                UserId = userId,
-                CreatedAt = DateTime.UtcNow
-            };
+            var like = CommentLikeModel.Create(commentId, userId);
             await _commentLikeRepository.CreateAsync(like);
-            comment.LikeCount += 1;
+            comment.IncrementLikeCount();
             await _commentRepository.UpdateAsync(comment);
 
-            return new CommentLikeResult
-            {
-                CommentId = commentId,
-                LikeCount = comment.LikeCount,
-                IsLikedByUser = true
-            };
+            var result = _mapper.Map<CommentLikeResult>(comment);
+            result.IsLikedByUser = true;
+            return result;
         }
     }
 }

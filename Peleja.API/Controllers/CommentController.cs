@@ -2,8 +2,8 @@ namespace Peleja.API.Controllers;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Peleja.API.Middleware;
-using Peleja.Domain.Models.DTOs;
+using NAuth.ACL.Interfaces;
+using Peleja.DTO;
 using Peleja.Domain.Services;
 
 [ApiController]
@@ -11,12 +11,12 @@ using Peleja.Domain.Services;
 public class CommentController : ControllerBase
 {
     private readonly CommentService _commentService;
-    private readonly TenantContext _tenantContext;
+    private readonly IUserClient _userClient;
 
-    public CommentController(CommentService commentService, TenantContext tenantContext)
+    public CommentController(CommentService commentService, IUserClient userClient)
     {
         _commentService = commentService;
-        _tenantContext = tenantContext;
+        _userClient = userClient;
     }
 
     [HttpGet]
@@ -33,19 +33,16 @@ public class CommentController : ControllerBase
                 return BadRequest("O parâmetro pageUrl é obrigatório");
 
             long? currentUserId = null;
-            if (User.Identity?.IsAuthenticated == true)
-            {
-                var userIdClaim = User.FindFirst("UserId")?.Value;
-                if (long.TryParse(userIdClaim, out var uid))
-                    currentUserId = uid;
-            }
+            var userSession = _userClient.GetUserInSession(HttpContext);
+            if (userSession != null)
+                currentUserId = userSession.UserId;
 
             long? cursorValue = null;
             if (!string.IsNullOrEmpty(cursor) && long.TryParse(cursor.Split('_').Last(), out var cv))
                 cursorValue = cv;
 
             var result = await _commentService.GetByPageUrlAsync(
-                _tenantContext.TenantId, pageUrl, sortBy, cursorValue, pageSize, currentUserId);
+                pageUrl, sortBy, cursorValue, pageSize, currentUserId);
 
             return Ok(result);
         }
@@ -61,11 +58,11 @@ public class CommentController : ControllerBase
     {
         try
         {
-            var userId = GetCurrentUserId();
-            if (userId == 0)
+            var userSession = _userClient.GetUserInSession(HttpContext);
+            if (userSession == null)
                 return Unauthorized();
 
-            var result = await _commentService.CreateAsync(_tenantContext.TenantId, userId, info);
+            var result = await _commentService.CreateAsync(userSession.UserId, info);
 
             return CreatedAtAction(nameof(GetComments), new { pageUrl = info.PageUrl }, result);
         }
@@ -89,8 +86,11 @@ public class CommentController : ControllerBase
     {
         try
         {
-            var userId = GetCurrentUserId();
-            var result = await _commentService.UpdateAsync(commentId, userId, info);
+            var userSession = _userClient.GetUserInSession(HttpContext);
+            if (userSession == null)
+                return Unauthorized();
+
+            var result = await _commentService.UpdateAsync(commentId, userSession.UserId, info);
 
             return Ok(result);
         }
@@ -118,9 +118,11 @@ public class CommentController : ControllerBase
     {
         try
         {
-            var userId = GetCurrentUserId();
-            var userRole = GetCurrentUserRole();
-            await _commentService.DeleteAsync(commentId, userId, userRole);
+            var userSession = _userClient.GetUserInSession(HttpContext);
+            if (userSession == null)
+                return Unauthorized();
+
+            await _commentService.DeleteAsync(commentId, userSession.UserId, userSession.IsAdmin);
 
             return NoContent();
         }
@@ -136,17 +138,5 @@ public class CommentController : ControllerBase
         {
             return StatusCode(500, ex.Message);
         }
-    }
-
-    private long GetCurrentUserId()
-    {
-        var userIdClaim = User.FindFirst("UserId")?.Value;
-        return long.TryParse(userIdClaim, out var userId) ? userId : 0;
-    }
-
-    private int GetCurrentUserRole()
-    {
-        var roleClaim = User.FindFirst("Role")?.Value;
-        return int.TryParse(roleClaim, out var role) ? role : 1;
     }
 }

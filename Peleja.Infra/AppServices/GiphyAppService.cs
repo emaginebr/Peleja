@@ -2,7 +2,7 @@ namespace Peleja.Infra.AppServices;
 
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
-using Peleja.Domain.Models.DTOs;
+using Peleja.DTO;
 using Peleja.Infra.Interfaces.AppServices;
 
 public class GiphyAppService : IGiphyAppService

@@ -1,6 +1,6 @@
 namespace Peleja.Domain.Interfaces.AppServices;
 
-using Peleja.Domain.Models.DTOs;
+using Peleja.DTO;
 
 public interface IGiphyAppService
 {

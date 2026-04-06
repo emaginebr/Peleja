@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Peleja.Domain\Peleja.Domain.csproj" />
+    <ProjectReference Include="..\Peleja.DTO\Peleja.DTO.csproj" />
     <ProjectReference Include="..\Peleja.Infra.Interfaces\Peleja.Infra.Interfaces.csproj" />
   </ItemGroup>
 
@@ -10,6 +11,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="AutoMapper" Version="13.*" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.*" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.*" />
   </ItemGroup>

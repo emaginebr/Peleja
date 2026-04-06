@@ -20,6 +20,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Peleja.Application\Peleja.Application.csproj" />
     <ProjectReference Include="..\Peleja.Domain\Peleja.Domain.csproj" />
+    <ProjectReference Include="..\Peleja.DTO\Peleja.DTO.csproj" />
     <ProjectReference Include="..\Peleja.Infra\Peleja.Infra.csproj" />
     <ProjectReference Include="..\Peleja.Infra.Interfaces\Peleja.Infra.Interfaces.csproj" />
   </ItemGroup>

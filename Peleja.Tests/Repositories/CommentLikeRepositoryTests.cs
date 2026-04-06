@@ -1,64 +1,45 @@
 namespace Peleja.Tests.Repositories;
 
 using FluentAssertions;
-using Peleja.Domain.Enums;
 using Peleja.Domain.Models;
+using Peleja.Infra.Context;
 using Peleja.Infra.Repositories;
 
 public class CommentLikeRepositoryTests
 {
-    private async Task<(Peleja.Infra.Context.PelejaContext context, Comment comment, User user)> Setup()
+    private async Task<(PelejaContext context, Infra.Context.Comment comment)> Setup()
     {
         var context = TestDbContextFactory.Create();
-        var tenant = new Tenant
+        var page = new Page
         {
-            Name = "Test",
-            Slug = "test",
-            NauthApiUrl = "https://nauth.example.com",
-            NauthApiKey = "key",
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        };
-        context.Tenants.Add(tenant);
-        await context.SaveChangesAsync();
-
-        var user = new User
-        {
-            TenantId = tenant.TenantId,
-            NauthUserId = "nauth-1",
-            DisplayName = "Test User",
-            Role = UserRole.User,
-            CreatedAt = DateTime.UtcNow
-        };
-        context.Users.Add(user);
-        await context.SaveChangesAsync();
-
-        var comment = new Comment
-        {
-            TenantId = tenant.TenantId,
-            UserId = user.UserId,
+            UserId = 1,
             PageUrl = "https://example.com/page",
+            CreatedAt = DateTime.UtcNow
+        };
+        context.Pages.Add(page);
+        await context.SaveChangesAsync();
+
+        var comment = new Infra.Context.Comment
+        {
+            PageId = page.PageId,
+            UserId = 1,
             Content = "Test",
             CreatedAt = DateTime.UtcNow
         };
         context.Comments.Add(comment);
         await context.SaveChangesAsync();
 
-        return (context, comment, user);
+        return (context, comment);
     }
 
     [Fact]
     public async Task CreateAsync_PersistsLike()
     {
-        var (context, comment, user) = await Setup();
-        var repo = new CommentLikeRepository(context);
+        var (context, comment) = await Setup();
+        var mapper = TestDbContextFactory.CreateMapper();
+        var repo = new CommentLikeRepository(context, mapper);
 
-        var like = new CommentLike
-        {
-            CommentId = comment.CommentId,
-            UserId = user.UserId,
-            CreatedAt = DateTime.UtcNow
-        };
+        var like = CommentLikeModel.Create(comment.CommentId, 10);
 
         var result = await repo.CreateAsync(like);
 
@@ -69,18 +50,19 @@ public class CommentLikeRepositoryTests
     [Fact]
     public async Task GetAsync_ReturnsLike_WhenExists()
     {
-        var (context, comment, user) = await Setup();
-        context.CommentLikes.Add(new CommentLike
+        var (context, comment) = await Setup();
+        var mapper = TestDbContextFactory.CreateMapper();
+        context.CommentLikes.Add(new Infra.Context.CommentLike
         {
             CommentId = comment.CommentId,
-            UserId = user.UserId,
+            UserId = 10,
             CreatedAt = DateTime.UtcNow
         });
         await context.SaveChangesAsync();
 
-        var repo = new CommentLikeRepository(context);
+        var repo = new CommentLikeRepository(context, mapper);
 
-        var result = await repo.GetAsync(comment.CommentId, user.UserId);
+        var result = await repo.GetAsync(comment.CommentId, 10);
 
         result.Should().NotBeNull();
         context.Dispose();
@@ -89,10 +71,11 @@ public class CommentLikeRepositoryTests
     [Fact]
     public async Task GetAsync_ReturnsNull_WhenNotExists()
     {
-        var (context, comment, user) = await Setup();
-        var repo = new CommentLikeRepository(context);
+        var (context, comment) = await Setup();
+        var mapper = TestDbContextFactory.CreateMapper();
+        var repo = new CommentLikeRepository(context, mapper);
 
-        var result = await repo.GetAsync(comment.CommentId, user.UserId);
+        var result = await repo.GetAsync(comment.CommentId, 10);
 
         result.Should().BeNull();
         context.Dispose();
@@ -101,21 +84,22 @@ public class CommentLikeRepositoryTests
     [Fact]
     public async Task DeleteAsync_RemovesLike()
     {
-        var (context, comment, user) = await Setup();
-        var like = new CommentLike
+        var (context, comment) = await Setup();
+        var mapper = TestDbContextFactory.CreateMapper();
+        context.CommentLikes.Add(new Infra.Context.CommentLike
         {
             CommentId = comment.CommentId,
-            UserId = user.UserId,
+            UserId = 10,
             CreatedAt = DateTime.UtcNow
-        };
-        context.CommentLikes.Add(like);
+        });
         await context.SaveChangesAsync();
 
-        var repo = new CommentLikeRepository(context);
+        var repo = new CommentLikeRepository(context, mapper);
 
+        var like = (await repo.GetAsync(comment.CommentId, 10))!;
         await repo.DeleteAsync(like);
 
-        var result = await repo.GetAsync(comment.CommentId, user.UserId);
+        var result = await repo.GetAsync(comment.CommentId, 10);
         result.Should().BeNull();
         context.Dispose();
     }
@@ -123,18 +107,19 @@ public class CommentLikeRepositoryTests
     [Fact]
     public async Task ExistsAsync_ReturnsTrue_WhenLikeExists()
     {
-        var (context, comment, user) = await Setup();
-        context.CommentLikes.Add(new CommentLike
+        var (context, comment) = await Setup();
+        var mapper = TestDbContextFactory.CreateMapper();
+        context.CommentLikes.Add(new Infra.Context.CommentLike
         {
             CommentId = comment.CommentId,
-            UserId = user.UserId,
+            UserId = 10,
             CreatedAt = DateTime.UtcNow
         });
         await context.SaveChangesAsync();
 
-        var repo = new CommentLikeRepository(context);
+        var repo = new CommentLikeRepository(context, mapper);
 
-        var result = await repo.ExistsAsync(comment.CommentId, user.UserId);
+        var result = await repo.ExistsAsync(comment.CommentId, 10);
 
         result.Should().BeTrue();
         context.Dispose();
@@ -143,10 +128,11 @@ public class CommentLikeRepositoryTests
     [Fact]
     public async Task ExistsAsync_ReturnsFalse_WhenNoLike()
     {
-        var (context, comment, user) = await Setup();
-        var repo = new CommentLikeRepository(context);
+        var (context, comment) = await Setup();
+        var mapper = TestDbContextFactory.CreateMapper();
+        var repo = new CommentLikeRepository(context, mapper);
 
-        var result = await repo.ExistsAsync(comment.CommentId, user.UserId);
+        var result = await repo.ExistsAsync(comment.CommentId, 10);
 
         result.Should().BeFalse();
         context.Dispose();

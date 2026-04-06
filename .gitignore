@@ -11,6 +11,16 @@
 *.sln.docstates
 *.env
 
+# Environment files with secrets
+.env
+.env.prod
+.env.local
+
+# SSL certificates
+nginx/certs/
+*.pem
+*.key
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 

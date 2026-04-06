@@ -1,5 +1,6 @@
 namespace Peleja.Infra.Repositories;
 
+using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Peleja.Domain.Models;
 using Peleja.Infra.Context;
@@ -8,24 +9,22 @@ using Peleja.Infra.Interfaces.Repositories;
 public class CommentRepository : ICommentRepository
 {
     private readonly PelejaContext _context;
+    private readonly IMapper _mapper;
 
-    public CommentRepository(PelejaContext context)
+    public CommentRepository(PelejaContext context, IMapper mapper)
     {
         _context = context;
+        _mapper = mapper;
     }
 
-    public async Task<List<Comment>> GetByPageUrlAsync(long tenantId, string pageUrl, string sortBy, long? cursor, int pageSize)
+    public async Task<List<CommentModel>> GetByPageIdAsync(long pageId, string sortBy, long? cursor, int pageSize)
     {
-        // Use IgnoreQueryFilters to include soft-deleted replies (they will be marked as deleted)
         var query = _context.Comments
             .IgnoreQueryFilters()
-            .Where(c => c.TenantId == tenantId
-                        && c.PageUrl == pageUrl
+            .Where(c => c.PageId == pageId
                         && c.ParentCommentId == null
                         && !c.IsDeleted)
-            .Include(c => c.User)
             .Include(c => c.Replies.Where(r => !r.IsDeleted))
-                .ThenInclude(r => r.User)
             .AsNoTracking();
 
         if (sortBy == "popular")
@@ -51,7 +50,7 @@ public class CommentRepository : ICommentRepository
                 .OrderByDescending(c => c.LikeCount)
                 .ThenByDescending(c => c.CommentId);
         }
-        else // "recent"
+        else
         {
             if (cursor.HasValue)
             {
@@ -61,30 +60,40 @@ public class CommentRepository : ICommentRepository
             query = query.OrderByDescending(c => c.CommentId);
         }
 
-        return await query
+        var entities = await query
             .Take(pageSize + 1)
             .ToListAsync();
+
+        return _mapper.Map<List<CommentModel>>(entities);
     }
 
-    public async Task<Comment?> GetByIdAsync(long commentId)
+    public async Task<CommentModel?> GetByIdAsync(long commentId)
     {
-        return await _context.Comments
-            .Include(c => c.User)
+        var entity = await _context.Comments
             .FirstOrDefaultAsync(c => c.CommentId == commentId);
+
+        return entity != null ? _mapper.Map<CommentModel>(entity) : null;
     }
 
-    public async Task<Comment> CreateAsync(Comment comment)
+    public async Task<CommentModel> CreateAsync(CommentModel comment)
     {
-        _context.Comments.Add(comment);
+        var entity = _mapper.Map<Context.Comment>(comment);
+        _context.Comments.Add(entity);
         await _context.SaveChangesAsync();
-        return comment;
+        return _mapper.Map<CommentModel>(entity);
     }
 
-    public async Task<Comment> UpdateAsync(Comment comment)
+    public async Task<CommentModel> UpdateAsync(CommentModel comment)
     {
-        _context.Comments.Update(comment);
+        var entity = await _context.Comments
+            .FirstOrDefaultAsync(c => c.CommentId == comment.CommentId);
+
+        if (entity == null)
+            throw new KeyNotFoundException("Comentário não encontrado");
+
+        _mapper.Map(comment, entity);
         await _context.SaveChangesAsync();
-        return comment;
+        return _mapper.Map<CommentModel>(entity);
     }
 
     public async Task<int> GetRepliesCountAsync(long parentCommentId)
@@ -93,14 +102,15 @@ public class CommentRepository : ICommentRepository
             .CountAsync(c => c.ParentCommentId == parentCommentId);
     }
 
-    public async Task<List<Comment>> GetRepliesAsync(long parentCommentId)
+    public async Task<List<CommentModel>> GetRepliesAsync(long parentCommentId)
     {
-        return await _context.Comments
-            .Include(c => c.User)
+        var entities = await _context.Comments
             .Where(c => c.ParentCommentId == parentCommentId)
             .OrderBy(c => c.CommentId)
             .AsNoTracking()
             .ToListAsync();
+
+        return _mapper.Map<List<CommentModel>>(entities);
     }
 
     public async Task<bool> ExistsAsync(long commentId)

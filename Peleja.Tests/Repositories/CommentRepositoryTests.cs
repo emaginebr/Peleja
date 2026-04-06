@@ -1,55 +1,34 @@
 namespace Peleja.Tests.Repositories;
 
 using FluentAssertions;
-using Peleja.Domain.Enums;
 using Peleja.Domain.Models;
+using Peleja.Infra.Context;
 using Peleja.Infra.Repositories;
 
 public class CommentRepositoryTests
 {
-    private async Task<(Peleja.Infra.Context.PelejaContext context, Tenant tenant, User user)> SetupWithTenantAndUser()
+    private async Task<(PelejaContext context, Page page)> SetupWithPage()
     {
         var context = TestDbContextFactory.Create();
-        var tenant = new Tenant
+        var page = new Page
         {
-            Name = "Test",
-            Slug = "test",
-            NauthApiUrl = "https://nauth.example.com",
-            NauthApiKey = "key",
-            IsActive = true,
+            UserId = 1,
+            PageUrl = "https://example.com/page",
             CreatedAt = DateTime.UtcNow
         };
-        context.Tenants.Add(tenant);
+        context.Pages.Add(page);
         await context.SaveChangesAsync();
-
-        var user = new User
-        {
-            TenantId = tenant.TenantId,
-            NauthUserId = "nauth-1",
-            DisplayName = "Test User",
-            Role = UserRole.User,
-            CreatedAt = DateTime.UtcNow
-        };
-        context.Users.Add(user);
-        await context.SaveChangesAsync();
-
-        return (context, tenant, user);
+        return (context, page);
     }
 
     [Fact]
     public async Task CreateAsync_PersistsComment()
     {
-        var (context, tenant, user) = await SetupWithTenantAndUser();
-        var repo = new CommentRepository(context);
+        var (context, page) = await SetupWithPage();
+        var mapper = TestDbContextFactory.CreateMapper();
+        var repo = new CommentRepository(context, mapper);
 
-        var comment = new Comment
-        {
-            TenantId = tenant.TenantId,
-            UserId = user.UserId,
-            PageUrl = "https://example.com/page",
-            Content = "Hello World",
-            CreatedAt = DateTime.UtcNow
-        };
+        var comment = CommentModel.Create(page.PageId, 1, "Hello World", null, null);
 
         var result = await repo.CreateAsync(comment);
 
@@ -59,62 +38,56 @@ public class CommentRepositoryTests
     }
 
     [Fact]
-    public async Task GetByIdAsync_ReturnsComment_WithUser()
+    public async Task GetByIdAsync_ReturnsComment()
     {
-        var (context, tenant, user) = await SetupWithTenantAndUser();
-        var comment = new Comment
+        var (context, page) = await SetupWithPage();
+        var mapper = TestDbContextFactory.CreateMapper();
+        context.Comments.Add(new Infra.Context.Comment
         {
-            TenantId = tenant.TenantId,
-            UserId = user.UserId,
-            PageUrl = "https://example.com/page",
+            PageId = page.PageId,
+            UserId = 1,
             Content = "Test comment",
             CreatedAt = DateTime.UtcNow
-        };
-        context.Comments.Add(comment);
+        });
         await context.SaveChangesAsync();
 
-        var repo = new CommentRepository(context);
+        var repo = new CommentRepository(context, mapper);
 
-        var result = await repo.GetByIdAsync(comment.CommentId);
+        var result = await repo.GetByIdAsync(1);
 
         result.Should().NotBeNull();
         result!.Content.Should().Be("Test comment");
-        result.User.Should().NotBeNull();
-        result.User!.DisplayName.Should().Be("Test User");
         context.Dispose();
     }
 
     [Fact]
-    public async Task GetByPageUrlAsync_ReturnsOnlyRootComments()
+    public async Task GetByPageIdAsync_ReturnsOnlyRootComments()
     {
-        var (context, tenant, user) = await SetupWithTenantAndUser();
-        var root = new Comment
+        var (context, page) = await SetupWithPage();
+        var mapper = TestDbContextFactory.CreateMapper();
+        var root = new Infra.Context.Comment
         {
-            TenantId = tenant.TenantId,
-            UserId = user.UserId,
-            PageUrl = "https://example.com/page",
+            PageId = page.PageId,
+            UserId = 1,
             Content = "Root comment",
             CreatedAt = DateTime.UtcNow
         };
         context.Comments.Add(root);
         await context.SaveChangesAsync();
 
-        var reply = new Comment
+        context.Comments.Add(new Infra.Context.Comment
         {
-            TenantId = tenant.TenantId,
-            UserId = user.UserId,
+            PageId = page.PageId,
+            UserId = 1,
             ParentCommentId = root.CommentId,
-            PageUrl = "https://example.com/page",
             Content = "Reply comment",
             CreatedAt = DateTime.UtcNow
-        };
-        context.Comments.Add(reply);
+        });
         await context.SaveChangesAsync();
 
-        var repo = new CommentRepository(context);
+        var repo = new CommentRepository(context, mapper);
 
-        var result = await repo.GetByPageUrlAsync(
-            tenant.TenantId, "https://example.com/page", "recent", null, 15);
+        var result = await repo.GetByPageIdAsync(page.PageId, "recent", null, 15);
 
         result.Should().HaveCount(1);
         result[0].Content.Should().Be("Root comment");
@@ -122,32 +95,30 @@ public class CommentRepositoryTests
     }
 
     [Fact]
-    public async Task GetByPageUrlAsync_ExcludesSoftDeletedComments()
+    public async Task GetByPageIdAsync_ExcludesSoftDeletedComments()
     {
-        var (context, tenant, user) = await SetupWithTenantAndUser();
-        context.Comments.Add(new Comment
+        var (context, page) = await SetupWithPage();
+        var mapper = TestDbContextFactory.CreateMapper();
+        context.Comments.Add(new Infra.Context.Comment
         {
-            TenantId = tenant.TenantId,
-            UserId = user.UserId,
-            PageUrl = "https://example.com/page",
+            PageId = page.PageId,
+            UserId = 1,
             Content = "Visible comment",
             CreatedAt = DateTime.UtcNow
         });
-        context.Comments.Add(new Comment
+        context.Comments.Add(new Infra.Context.Comment
         {
-            TenantId = tenant.TenantId,
-            UserId = user.UserId,
-            PageUrl = "https://example.com/page",
+            PageId = page.PageId,
+            UserId = 1,
             Content = "Deleted comment",
             IsDeleted = true,
             CreatedAt = DateTime.UtcNow
         });
         await context.SaveChangesAsync();
 
-        var repo = new CommentRepository(context);
+        var repo = new CommentRepository(context, mapper);
 
-        var result = await repo.GetByPageUrlAsync(
-            tenant.TenantId, "https://example.com/page", "recent", null, 15);
+        var result = await repo.GetByPageIdAsync(page.PageId, "recent", null, 15);
 
         result.Should().HaveCount(1);
         result[0].Content.Should().Be("Visible comment");
@@ -155,26 +126,25 @@ public class CommentRepositoryTests
     }
 
     [Fact]
-    public async Task GetByPageUrlAsync_ReturnsInDescendingOrder_ForRecent()
+    public async Task GetByPageIdAsync_ReturnsInDescendingOrder_ForRecent()
     {
-        var (context, tenant, user) = await SetupWithTenantAndUser();
+        var (context, page) = await SetupWithPage();
+        var mapper = TestDbContextFactory.CreateMapper();
         for (int i = 1; i <= 3; i++)
         {
-            context.Comments.Add(new Comment
+            context.Comments.Add(new Infra.Context.Comment
             {
-                TenantId = tenant.TenantId,
-                UserId = user.UserId,
-                PageUrl = "https://example.com/page",
+                PageId = page.PageId,
+                UserId = 1,
                 Content = $"Comment {i}",
                 CreatedAt = DateTime.UtcNow.AddMinutes(i)
             });
         }
         await context.SaveChangesAsync();
 
-        var repo = new CommentRepository(context);
+        var repo = new CommentRepository(context, mapper);
 
-        var result = await repo.GetByPageUrlAsync(
-            tenant.TenantId, "https://example.com/page", "recent", null, 15);
+        var result = await repo.GetByPageIdAsync(page.PageId, "recent", null, 15);
 
         result.Should().HaveCount(3);
         result[0].CommentId.Should().BeGreaterThan(result[1].CommentId);
@@ -183,98 +153,51 @@ public class CommentRepositoryTests
     }
 
     [Fact]
-    public async Task GetByPageUrlAsync_RespectsPageSize()
+    public async Task GetByPageIdAsync_RespectsPageSize()
     {
-        var (context, tenant, user) = await SetupWithTenantAndUser();
+        var (context, page) = await SetupWithPage();
+        var mapper = TestDbContextFactory.CreateMapper();
         for (int i = 0; i < 5; i++)
         {
-            context.Comments.Add(new Comment
+            context.Comments.Add(new Infra.Context.Comment
             {
-                TenantId = tenant.TenantId,
-                UserId = user.UserId,
-                PageUrl = "https://example.com/page",
+                PageId = page.PageId,
+                UserId = 1,
                 Content = $"Comment {i}",
                 CreatedAt = DateTime.UtcNow
             });
         }
         await context.SaveChangesAsync();
 
-        var repo = new CommentRepository(context);
+        var repo = new CommentRepository(context, mapper);
 
-        // pageSize=2, repo returns pageSize+1 = 3 to signal hasMore
-        var result = await repo.GetByPageUrlAsync(
-            tenant.TenantId, "https://example.com/page", "recent", null, 2);
+        var result = await repo.GetByPageIdAsync(page.PageId, "recent", null, 2);
 
         result.Should().HaveCount(3);
         context.Dispose();
     }
 
     [Fact]
-    public async Task GetByPageUrlAsync_IsolatesByTenant()
-    {
-        var (context, tenant1, user) = await SetupWithTenantAndUser();
-        var tenant2 = new Tenant
-        {
-            Name = "Other",
-            Slug = "other",
-            NauthApiUrl = "https://nauth.example.com",
-            NauthApiKey = "key2",
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        };
-        context.Tenants.Add(tenant2);
-        await context.SaveChangesAsync();
-
-        context.Comments.Add(new Comment
-        {
-            TenantId = tenant1.TenantId,
-            UserId = user.UserId,
-            PageUrl = "https://example.com/page",
-            Content = "Tenant 1 comment",
-            CreatedAt = DateTime.UtcNow
-        });
-        context.Comments.Add(new Comment
-        {
-            TenantId = tenant2.TenantId,
-            UserId = user.UserId,
-            PageUrl = "https://example.com/page",
-            Content = "Tenant 2 comment",
-            CreatedAt = DateTime.UtcNow
-        });
-        await context.SaveChangesAsync();
-
-        var repo = new CommentRepository(context);
-
-        var result = await repo.GetByPageUrlAsync(
-            tenant1.TenantId, "https://example.com/page", "recent", null, 15);
-
-        result.Should().HaveCount(1);
-        result[0].Content.Should().Be("Tenant 1 comment");
-        context.Dispose();
-    }
-
-    [Fact]
     public async Task UpdateAsync_PersistsChanges()
     {
-        var (context, tenant, user) = await SetupWithTenantAndUser();
-        var comment = new Comment
+        var (context, page) = await SetupWithPage();
+        var mapper = TestDbContextFactory.CreateMapper();
+        context.Comments.Add(new Infra.Context.Comment
         {
-            TenantId = tenant.TenantId,
-            UserId = user.UserId,
-            PageUrl = "https://example.com/page",
+            PageId = page.PageId,
+            UserId = 1,
             Content = "Original",
             CreatedAt = DateTime.UtcNow
-        };
-        context.Comments.Add(comment);
+        });
         await context.SaveChangesAsync();
 
-        var repo = new CommentRepository(context);
+        var repo = new CommentRepository(context, mapper);
 
-        comment.Content = "Updated";
-        comment.IsEdited = true;
+        var comment = (await repo.GetByIdAsync(1))!;
+        comment.Update("Updated", null);
         await repo.UpdateAsync(comment);
 
-        var updated = await repo.GetByIdAsync(comment.CommentId);
+        var updated = await repo.GetByIdAsync(1);
         updated!.Content.Should().Be("Updated");
         updated.IsEdited.Should().BeTrue();
         context.Dispose();

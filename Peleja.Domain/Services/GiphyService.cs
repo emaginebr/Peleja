@@ -1,6 +1,6 @@
 namespace Peleja.Domain.Services;
 
-using Peleja.Domain.Models.DTOs;
+using Peleja.DTO;
 using Peleja.Domain.Interfaces.AppServices;
 
 public class GiphyService
