@@ -1,0 +1,6 @@
+@Peleja.API_HostAddress = http://localhost:5232
+
+GET {{Peleja.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
