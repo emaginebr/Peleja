@@ -1,6 +1,7 @@
 namespace Peleja.Domain.Services;
 
 using AutoMapper;
+using Microsoft.Extensions.Logging;
 using Peleja.Domain.Models;
 using Peleja.DTO;
 using Peleja.Infra.Interfaces.Repositories;
@@ -11,17 +12,20 @@ public class CommentService
     private readonly ICommentLikeRepository<CommentLikeModel> _commentLikeRepository;
     private readonly IPageRepository<PageModel> _pageRepository;
     private readonly IMapper _mapper;
+    private readonly ILogger<CommentService> _logger;
 
     public CommentService(
         ICommentRepository<CommentModel> commentRepository,
         ICommentLikeRepository<CommentLikeModel> commentLikeRepository,
         IPageRepository<PageModel> pageRepository,
-        IMapper mapper)
+        IMapper mapper,
+        ILogger<CommentService> logger)
     {
         _commentRepository = commentRepository;
         _commentLikeRepository = commentLikeRepository;
         _pageRepository = pageRepository;
         _mapper = mapper;
+        _logger = logger;
     }
 
     public async Task<PaginatedResult<CommentResult>> GetByPageUrlAsync(
@@ -62,7 +66,7 @@ public class CommentService
         };
     }
 
-    public async Task<CommentResult> CreateAsync(long siteId, long userId, CommentInsertInfo info)
+    public async Task<CommentResult> CreateAsync(long siteId, long userId, string? userName, string? userImageUrl, CommentInsertInfo info)
     {
         if (string.IsNullOrWhiteSpace(info.Content))
             throw new ArgumentException("Content is required");
@@ -93,7 +97,7 @@ public class CommentService
                 throw new ArgumentException("Parent comment belongs to a different page");
         }
 
-        var comment = CommentModel.Create(page.PageId, userId, info.Content, info.GifUrl, info.ParentCommentId);
+        var comment = CommentModel.Create(page.PageId, userId, userName, userImageUrl, info.Content, info.GifUrl, info.ParentCommentId);
 
         var created = await _commentRepository.CreateAsync(comment);
         return await MapToResult(created, userId);
@@ -118,6 +122,45 @@ public class CommentService
 
         var updated = await _commentRepository.UpdateAsync(comment);
         return await MapToResult(updated, userId);
+    }
+
+    public async Task<PaginatedResult<CommentResult>> GetByPageIdAuthenticatedAsync(
+        long siteId, long pageId, long userId, string sortBy, long? cursor, int pageSize)
+    {
+        pageSize = Math.Clamp(pageSize, 1, 50);
+
+        // Validate page belongs to site
+        var page = await _pageRepository.GetByIdAndSiteIdAsync(pageId, siteId);
+        if (page == null)
+            throw new KeyNotFoundException("Page not found");
+
+        var comments = await _commentRepository.GetByPageIdAsync(page.PageId, sortBy, cursor, pageSize);
+
+        var hasMore = comments.Count > pageSize;
+        if (hasMore)
+            comments = comments.Take(pageSize).ToList();
+
+        var items = new List<CommentResult>();
+        foreach (var comment in comments)
+        {
+            items.Add(await MapToResult(comment, userId));
+        }
+
+        string? nextCursor = null;
+        if (hasMore && items.Count > 0)
+        {
+            var lastItem = comments.Last();
+            nextCursor = sortBy == "popular"
+                ? $"{lastItem.LikeCount}_{lastItem.CommentId}"
+                : lastItem.CommentId.ToString();
+        }
+
+        return new PaginatedResult<CommentResult>
+        {
+            Items = items,
+            NextCursor = nextCursor,
+            HasMore = hasMore
+        };
     }
 
     public async Task DeleteAsync(long commentId, long userId, bool isAdmin, long siteAdminUserId = 0)
@@ -145,6 +188,8 @@ public class CommentService
             result.GifUrl = null;
             result.LikeCount = 0;
             result.UserId = 0;
+            result.UserName = null;
+            result.UserImageUrl = null;
             result.IsLikedByUser = false;
         }
         else if (currentUserId.HasValue)

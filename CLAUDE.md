@@ -1,10 +1,12 @@
 # Peleja Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-04-06
+Auto-generated from all feature plans. Last updated: 2026-04-07
 
 ## Active Technologies
 - C# / .NET 8.0 + Entity Framework Core 9.x, NAuth 0.5.10, AutoMapper 13.x, AspNetCoreRateLimit (002-site-entity-clientid)
 - PostgreSQL 17 — shared database (Sites) + per-tenant databases (Pages, Comments, Likes) (002-site-entity-clientid)
+- C# / .NET 8.0 + Entity Framework Core, AutoMapper, NAuth 0.5.10 (003-pagination-sites-list)
+- PostgreSQL (single database, peleja_ prefixed tables) (003-pagination-sites-list)
 
 - C# / .NET 8.0 + Entity Framework Core 9.x, NAuth (autenticação), zTools, Swashbuckle 8.x (Swagger), AspNetCoreRateLimit (rate limiting), Giphy .NET SDK ou HttpClient direto (001-comments-widget-backend)
 
@@ -25,6 +27,7 @@ tests/
 C# / .NET 8.0: Follow standard conventions
 
 ## Recent Changes
+- 003-pagination-sites-list: Added C# / .NET 8.0 + Entity Framework Core, AutoMapper, NAuth 0.5.10
 - 002-site-entity-clientid: Added C# / .NET 8.0 + Entity Framework Core 9.x, NAuth 0.5.10, AutoMapper 13.x, AspNetCoreRateLimit
 
 - 001-comments-widget-backend: Added C# / .NET 8.0 + Entity Framework Core 9.x, NAuth (autenticação), zTools, Swashbuckle 8.x (Swagger), AspNetCoreRateLimit (rate limiting), Giphy .NET SDK ou HttpClient direto

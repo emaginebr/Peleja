@@ -26,6 +26,37 @@ public class PageRepository : IPageRepository<PageModel>
         return entity != null ? _mapper.Map<PageModel>(entity) : null;
     }
 
+    public async Task<PageModel?> GetByIdAndSiteIdAsync(long pageId, long siteId)
+    {
+        var entity = await _context.Pages
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.PageId == pageId && p.SiteId == siteId);
+
+        return entity != null ? _mapper.Map<PageModel>(entity) : null;
+    }
+
+    public async Task<List<(PageModel Page, int CommentCount)>> GetBySiteIdWithCommentsAsync(long siteId, long? cursor, int pageSize)
+    {
+        var query = _context.Pages
+            .AsNoTracking()
+            .Where(p => p.SiteId == siteId && p.Comments.Any(c => !c.IsDeleted));
+
+        if (cursor.HasValue)
+            query = query.Where(p => p.PageId < cursor.Value);
+
+        var results = await query
+            .OrderByDescending(p => p.PageId)
+            .Take(pageSize + 1)
+            .Select(p => new
+            {
+                Page = p,
+                CommentCount = p.Comments.Count(c => !c.IsDeleted)
+            })
+            .ToListAsync();
+
+        return results.Select(r => (_mapper.Map<PageModel>(r.Page), r.CommentCount)).ToList();
+    }
+
     public async Task<PageModel> CreateAsync(PageModel page)
     {
         var entity = _mapper.Map<Page>(page);

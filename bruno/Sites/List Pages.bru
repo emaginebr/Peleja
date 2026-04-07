@@ -1,0 +1,23 @@
+meta {
+  name: List Pages
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/sites/1/pages?pageSize=15
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Tenant-Id: {{tenantId}}
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+params:query {
+  pageSize: 15
+}

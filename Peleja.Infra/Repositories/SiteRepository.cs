@@ -46,6 +46,23 @@ public class SiteRepository : ISiteRepository<SiteModel>
         return _mapper.Map<List<SiteModel>>(entities);
     }
 
+    public async Task<List<SiteModel>> GetByUserIdPaginatedAsync(long userId, long? cursor, int pageSize)
+    {
+        var query = _context.Sites
+            .AsNoTracking()
+            .Where(s => s.UserId == userId);
+
+        if (cursor.HasValue)
+            query = query.Where(s => s.SiteId < cursor.Value);
+
+        var entities = await query
+            .OrderByDescending(s => s.SiteId)
+            .Take(pageSize + 1)
+            .ToListAsync();
+
+        return _mapper.Map<List<SiteModel>>(entities);
+    }
+
     public async Task<SiteModel> CreateAsync(SiteModel site)
     {
         var entity = _mapper.Map<Site>(site);

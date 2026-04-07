@@ -1,0 +1,24 @@
+meta {
+  name: List Comments By Page
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/sites/1/pages/1/comments?sortBy=recent&pageSize=15
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Tenant-Id: {{tenantId}}
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+params:query {
+  sortBy: recent
+  pageSize: 15
+}

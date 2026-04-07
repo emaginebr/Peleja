@@ -10,12 +10,17 @@ get {
   auth: none
 }
 
-headers {
-  X-Client-Id: {{clientId}}
-}
-
 params:query {
   pageUrl: {{pageUrl}}
   sortBy: recent
   pageSize: 15
+}
+
+headers {
+  X-Client-Id: {{clientId}}
+}
+
+vars:pre-request {
+  pageUrl: https://peleja.com/demo
+  clientId: 23c5ded3c7be46e78e8d1502fb46ff85
 }

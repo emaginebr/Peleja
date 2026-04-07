@@ -35,6 +35,8 @@ CREATE TABLE peleja_comments (
     comment_id        BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     page_id           BIGINT         NOT NULL,
     user_id           BIGINT         NOT NULL,
+    user_name         VARCHAR(200),
+    user_image_url    VARCHAR(1000),
     parent_comment_id BIGINT,
     content           VARCHAR(5000)  NOT NULL,
     gif_url           VARCHAR(2000),

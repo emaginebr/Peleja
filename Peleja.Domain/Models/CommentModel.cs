@@ -5,6 +5,8 @@ public class CommentModel
     public long CommentId { get; set; }
     public long PageId { get; set; }
     public long UserId { get; set; }
+    public string? UserName { get; set; }
+    public string? UserImageUrl { get; set; }
     public long? ParentCommentId { get; set; }
     public string Content { get; set; } = string.Empty;
     public string? GifUrl { get; set; }
@@ -17,12 +19,14 @@ public class CommentModel
 
     public List<CommentModel> Replies { get; set; } = new();
 
-    public static CommentModel Create(long pageId, long userId, string content, string? gifUrl, long? parentCommentId)
+    public static CommentModel Create(long pageId, long userId, string? userName, string? userImageUrl, string content, string? gifUrl, long? parentCommentId)
     {
         return new CommentModel
         {
             PageId = pageId,
             UserId = userId,
+            UserName = userName,
+            UserImageUrl = userImageUrl,
             Content = content,
             GifUrl = gifUrl,
             ParentCommentId = parentCommentId,

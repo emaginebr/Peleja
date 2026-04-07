@@ -38,8 +38,6 @@ public class CommentController : ControllerBase
             if (siteId == 0)
                 return BadRequest("The X-Client-Id header is required");
 
-            if (!SiteAllowsWrite() && false) { } // read is always allowed if not blocked (middleware handles blocked)
-
             long? currentUserId = null;
             var userSession = _userClient.GetUserInSession(HttpContext);
             if (userSession != null)
@@ -77,7 +75,24 @@ public class CommentController : ControllerBase
             if (userSession == null)
                 return Unauthorized();
 
-            var result = await _commentService.CreateAsync(siteId, userSession.UserId, info);
+            string? userImageUrl = null;
+            try
+            {
+                var token = HttpContext.Request.Headers["Authorization"].FirstOrDefault()?.Substring(7);
+                if (!string.IsNullOrEmpty(token))
+                {
+                    var userInfo = await _userClient.GetByIdAsync(userSession.UserId, token);
+                    if (userInfo != null)
+                        userImageUrl = userInfo.ImageUrl;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to fetch user image for userId={UserId}", userSession.UserId);
+            }
+
+            var result = await _commentService.CreateAsync(
+                siteId, userSession.UserId, userSession.Name, userImageUrl, info);
 
             return CreatedAtAction(nameof(GetComments), new { pageUrl = info.PageUrl }, result);
         }

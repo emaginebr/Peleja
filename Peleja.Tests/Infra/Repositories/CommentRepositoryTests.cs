@@ -28,7 +28,7 @@ public class CommentRepositoryTests
         var (context, page) = await SetupWithPage();
         var mapper = TestDbContextFactory.CreateMapper();
         var repo = new CommentRepository(context, mapper);
-        var comment = CommentModel.Create(page.PageId, 1, "Hello World", null, null);
+        var comment = CommentModel.Create(page.PageId, 1, "Test User", null, "Hello World", null, null);
         var result = await repo.CreateAsync(comment);
         result.CommentId.Should().BeGreaterThan(0);
         result.Content.Should().Be("Hello World");

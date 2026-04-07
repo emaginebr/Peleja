@@ -123,6 +123,14 @@ public class PelejaContext : DbContext
             entity.Property(e => e.UserId)
                 .HasColumnName("user_id");
 
+            entity.Property(e => e.UserName)
+                .HasColumnName("user_name")
+                .HasMaxLength(200);
+
+            entity.Property(e => e.UserImageUrl)
+                .HasColumnName("user_image_url")
+                .HasMaxLength(1000);
+
             entity.Property(e => e.ParentCommentId)
                 .HasColumnName("parent_comment_id");
 
