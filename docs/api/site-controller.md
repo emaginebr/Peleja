@@ -4,7 +4,7 @@
 **Required Header**: `X-Tenant-Id: {tenant_id}`
 **Authentication**: Required on all endpoints
 
-The SiteController manages site registration and configuration. Each site gets a unique `ClientId` used by the comment widget.
+The SiteController manages site registration, configuration, and provides admin access to pages and comments.
 
 ---
 
@@ -52,22 +52,33 @@ Registers a new site.
 
 ## GET /api/v1/sites
 
-Lists all sites owned by the authenticated user.
+Lists sites owned by the authenticated user with cursor-based pagination.
+
+### Query Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `cursor` | string | No | -- | Cursor from previous response |
+| `pageSize` | int | No | 15 | Items per page (clamped 1-50) |
 
 ### Response 200
 
 ```json
-[
-  {
-    "siteId": 1,
-    "clientId": "a1b2c3d4e5f67890abcdef1234567890",
-    "siteUrl": "https://mysite.com",
-    "tenant": "emagine",
-    "userId": 1,
-    "status": 1,
-    "createdAt": "2026-04-06T12:00:00"
-  }
-]
+{
+  "items": [
+    {
+      "siteId": 1,
+      "clientId": "a1b2c3d4e5f67890abcdef1234567890",
+      "siteUrl": "https://mysite.com",
+      "tenant": "emagine",
+      "userId": 1,
+      "status": 1,
+      "createdAt": "2026-04-06T12:00:00"
+    }
+  ],
+  "nextCursor": "2",
+  "hasMore": false
+}
 ```
 
 ---
@@ -109,6 +120,103 @@ Returns the updated site.
 | 403 | Not the site owner |
 | 404 | Site not found |
 | 409 | URL already registered |
+
+---
+
+## GET /api/v1/sites/{siteId}/pages
+
+Lists pages of a site that have at least one comment. Only the site owner can access. Cursor-based pagination.
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `siteId` | long | ID of the site |
+
+### Query Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `cursor` | string | No | -- | Cursor from previous response |
+| `pageSize` | int | No | 15 | Items per page (clamped 1-50) |
+
+### Response 200
+
+```json
+{
+  "items": [
+    {
+      "pageId": 1,
+      "pageUrl": "https://mysite.com/post-1",
+      "commentCount": 15,
+      "createdAt": "2026-04-06T12:00:00"
+    }
+  ],
+  "nextCursor": "2",
+  "hasMore": false
+}
+```
+
+### Errors
+
+| Status | Description |
+|--------|-------------|
+| 401 | Not authenticated |
+| 403 | Not the site owner |
+| 404 | Site not found |
+
+---
+
+## GET /api/v1/sites/{siteId}/pages/{pageId}/comments
+
+Lists comments for a specific page. Only the site owner can access. Cursor-based pagination. This is a separate admin endpoint from the public widget comment list.
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `siteId` | long | ID of the site |
+| `pageId` | long | ID of the page |
+
+### Query Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `sortBy` | string | No | `recent` | Sort order: `recent` or `popular` |
+| `cursor` | string | No | -- | Cursor from previous response |
+| `pageSize` | int | No | 15 | Items per page (clamped 1-50) |
+
+### Response 200
+
+Returns `PaginatedResult<CommentResult>` (same format as the public comment list).
+
+```json
+{
+  "items": [
+    {
+      "commentId": 42,
+      "content": "Great article!",
+      "userId": 1,
+      "userName": "John Doe",
+      "userImageUrl": "https://img.example.com/john.jpg",
+      "likeCount": 5,
+      "isLikedByUser": true,
+      "createdAt": "2026-04-06T12:00:00",
+      "replies": []
+    }
+  ],
+  "nextCursor": "41",
+  "hasMore": true
+}
+```
+
+### Errors
+
+| Status | Description |
+|--------|-------------|
+| 401 | Not authenticated |
+| 403 | Not the site owner |
+| 404 | Site or page not found |
 
 ---
 

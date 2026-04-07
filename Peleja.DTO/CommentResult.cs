@@ -34,6 +34,12 @@ public class CommentResult
     [JsonPropertyName("userId")]
     public long UserId { get; set; }
 
+    [JsonPropertyName("userName")]
+    public string? UserName { get; set; }
+
+    [JsonPropertyName("userImageUrl")]
+    public string? UserImageUrl { get; set; }
+
     [JsonPropertyName("replies")]
     public List<CommentResult>? Replies { get; set; }
 }

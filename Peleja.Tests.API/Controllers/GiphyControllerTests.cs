@@ -15,14 +15,14 @@ public class GiphyControllerTests
     }
 
     [Fact]
-    public async Task Search_Returns401_WithoutAuth()
+    public async Task Search_ReturnsOk_WithoutAuth()
     {
         var response = await _auth.CreateAnonymousRequest("/api/v1/giphy/search")
             .SetQueryParam("q", "cat")
             .AllowAnyHttpStatus()
             .GetAsync();
 
-        response.StatusCode.Should().Be(401);
+        response.StatusCode.Should().Be(200);
     }
 
     [Fact]

@@ -8,13 +8,15 @@ Peleja is a comments widget backend built with .NET 8. It provides RESTful endpo
 
 ### Site Management
 
-| Method   | Path                           | Header         | Auth     | Description                     |
-|----------|--------------------------------|----------------|----------|---------------------------------|
-| `POST`   | `/api/v1/sites`                | `X-Tenant-Id`  | Required | Register a new site             |
-| `GET`    | `/api/v1/sites`                | `X-Tenant-Id`  | Required | List authenticated user's sites |
-| `PUT`    | `/api/v1/sites/{siteId}`       | `X-Tenant-Id`  | Required | Update a site (owner only)      |
+| Method   | Path                                            | Header         | Auth     | Description                        |
+|----------|-------------------------------------------------|----------------|----------|------------------------------------|
+| `POST`   | `/api/v1/sites`                                 | `X-Tenant-Id`  | Required | Register a new site                |
+| `GET`    | `/api/v1/sites`                                 | `X-Tenant-Id`  | Required | List user's sites (paginated)      |
+| `PUT`    | `/api/v1/sites/{siteId}`                        | `X-Tenant-Id`  | Required | Update a site (owner only)         |
+| `GET`    | `/api/v1/sites/{siteId}/pages`                  | `X-Tenant-Id`  | Required | List pages with comments (paginated) |
+| `GET`    | `/api/v1/sites/{siteId}/pages/{pageId}/comments`| `X-Tenant-Id`  | Required | List comments by page (paginated)  |
 
-### Comments & Likes
+### Comments & Likes (Public Widget)
 
 | Method   | Path                                    | Header         | Auth     | Description                        |
 |----------|-----------------------------------------|----------------|----------|------------------------------------|
@@ -28,12 +30,12 @@ Peleja is a comments widget backend built with .NET 8. It provides RESTful endpo
 
 | Method   | Path                                    | Header         | Auth     | Description                        |
 |----------|-----------------------------------------|----------------|----------|------------------------------------|
-| `GET`    | `/api/v1/giphy/search`                  | `X-Client-Id`  | Required | Search for GIFs                    |
+| `GET`    | `/api/v1/giphy/search`                  | `X-Client-Id`  | No       | Search for GIFs                    |
 
 ## Controller Documentation
 
-- [SiteController](site-controller.md) -- Register, list, and update sites
-- [CommentController](comment-controller.md) -- List, create, update, and delete comments
+- [SiteController](site-controller.md) -- Sites, pages, and admin comment listing
+- [CommentController](comment-controller.md) -- Public comment CRUD
 - [CommentLikeController](comment-like-controller.md) -- Toggle likes on comments
 - [GiphyController](giphy-controller.md) -- Search for GIFs via Giphy
 - [Authentication Flow](authentication.md) -- Authentication, site resolution, and rate limiting
@@ -75,6 +77,7 @@ All data is stored in a single PostgreSQL database.
 ## Response Format
 
 - **Success responses** return the data directly (no wrapper).
+- **Paginated responses** use `PaginatedResult<T>` with `items`, `nextCursor`, and `hasMore`.
 - **Error responses** use [RFC 7807 Problem Details](https://datatracker.ietf.org/doc/html/rfc7807) format.
 
 ---
@@ -91,7 +94,31 @@ curl -X POST "http://localhost:5000/api/v1/sites" \
   -d '{ "siteUrl": "https://mysite.com", "tenant": "emagine" }'
 ```
 
-### List comments
+### List your sites (paginated)
+
+```bash
+curl -X GET "http://localhost:5000/api/v1/sites?pageSize=15" \
+  -H "X-Tenant-Id: emagine" \
+  -H "Authorization: Bearer {token}"
+```
+
+### List pages with comments
+
+```bash
+curl -X GET "http://localhost:5000/api/v1/sites/1/pages?pageSize=15" \
+  -H "X-Tenant-Id: emagine" \
+  -H "Authorization: Bearer {token}"
+```
+
+### List comments by page (admin)
+
+```bash
+curl -X GET "http://localhost:5000/api/v1/sites/1/pages/1/comments?sortBy=recent&pageSize=15" \
+  -H "X-Tenant-Id: emagine" \
+  -H "Authorization: Bearer {token}"
+```
+
+### List comments (public widget)
 
 ```bash
 curl -X GET "http://localhost:5000/api/v1/comments?pageUrl=https://mysite.com/post-1" \

@@ -5,6 +5,8 @@ public class Comment
     public long CommentId { get; set; }
     public long PageId { get; set; }
     public long UserId { get; set; }
+    public string? UserName { get; set; }
+    public string? UserImageUrl { get; set; }
     public long? ParentCommentId { get; set; }
     public string Content { get; set; } = string.Empty;
     public string? GifUrl { get; set; }

@@ -58,6 +58,54 @@ public class CommentControllerTests
     }
 
     [Fact]
+    public async Task CreateComment_ReturnsUserNameInResponse()
+    {
+        var createResponse = await _auth.CreateAuthenticatedRequest("/api/v1/comments")
+            .AllowAnyHttpStatus()
+            .PostJsonAsync(new
+            {
+                pageUrl = "https://example.com/test-username",
+                content = "Testing userName field"
+            });
+
+        createResponse.StatusCode.Should().Be(201);
+        var json = await createResponse.GetStringAsync();
+        var body = JsonDocument.Parse(json).RootElement;
+
+        body.TryGetProperty("userName", out var userName).Should().BeTrue();
+        userName.GetString().Should().NotBeNullOrEmpty("userName should be populated from NAuth");
+
+        body.TryGetProperty("userImageUrl", out _).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetComments_ReturnsUserNameForAuthenticatedComments()
+    {
+        // Create a comment first
+        await _auth.CreateAuthenticatedRequest("/api/v1/comments")
+            .PostJsonAsync(new
+            {
+                pageUrl = "https://example.com/test-username-get",
+                content = "Comment with user info"
+            });
+
+        // Fetch comments with auth (so token is available for user lookup)
+        var response = await _auth.CreateAuthenticatedRequest("/api/v1/comments")
+            .SetQueryParam("pageUrl", "https://example.com/test-username-get")
+            .AllowAnyHttpStatus()
+            .GetAsync();
+
+        response.StatusCode.Should().Be(200);
+        var json = await response.GetStringAsync();
+        var body = JsonDocument.Parse(json).RootElement;
+        var items = body.GetProperty("items");
+
+        items.GetArrayLength().Should().BeGreaterThan(0);
+        var firstComment = items[0];
+        firstComment.GetProperty("userName").GetString().Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
     public async Task CreateComment_Returns401_WithoutAuth()
     {
         var response = await _auth.CreateAnonymousRequest("/api/v1/comments")

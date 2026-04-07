@@ -41,6 +41,7 @@ public static class DependencyInjection
 
         // Domain Services
         services.AddScoped<SiteService>();
+        services.AddScoped<PageService>();
         services.AddScoped<CommentService>();
         services.AddScoped<CommentLikeService>();
         services.AddScoped<GiphyService>();

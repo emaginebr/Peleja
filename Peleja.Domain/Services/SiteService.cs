@@ -35,10 +35,28 @@ public class SiteService
         return _mapper.Map<SiteResult>(created);
     }
 
-    public async Task<List<SiteResult>> ListByUserIdAsync(long userId)
+    public async Task<PaginatedResult<SiteResult>> ListByUserIdAsync(long userId, long? cursor, int pageSize)
     {
-        var sites = await _siteRepository.GetByUserIdAsync(userId);
-        return _mapper.Map<List<SiteResult>>(sites);
+        pageSize = Math.Clamp(pageSize, 1, 50);
+
+        var sites = await _siteRepository.GetByUserIdPaginatedAsync(userId, cursor, pageSize);
+
+        var hasMore = sites.Count > pageSize;
+        if (hasMore)
+            sites = sites.Take(pageSize).ToList();
+
+        var items = _mapper.Map<List<SiteResult>>(sites);
+
+        string? nextCursor = null;
+        if (hasMore && sites.Count > 0)
+            nextCursor = sites.Last().SiteId.ToString();
+
+        return new PaginatedResult<SiteResult>
+        {
+            Items = items,
+            NextCursor = nextCursor,
+            HasMore = hasMore
+        };
     }
 
     public async Task<SiteResult> UpdateAsync(long siteId, long userId, SiteUpdateInfo info)

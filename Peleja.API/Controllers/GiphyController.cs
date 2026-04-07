@@ -2,6 +2,7 @@ namespace Peleja.API.Controllers;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+
 using Peleja.Domain.Services;
 
 [ApiController]
@@ -18,7 +19,7 @@ public class GiphyController : ControllerBase
     }
 
     [HttpGet("search")]
-    [Authorize]
+    [AllowAnonymous]
     public async Task<IActionResult> Search(
         [FromQuery] string? q,
         [FromQuery] int limit = 20,

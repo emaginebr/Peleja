@@ -66,11 +66,12 @@ public class AuthFixture : IAsyncLifetime
         if (listResponse.StatusCode == 200)
         {
             var json = await listResponse.GetStringAsync();
-            var sites = JsonDocument.Parse(json).RootElement;
+            var body = JsonDocument.Parse(json).RootElement;
+            var items = body.GetProperty("items");
 
-            if (sites.GetArrayLength() > 0)
+            if (items.GetArrayLength() > 0)
             {
-                ClientId = sites[0].GetProperty("clientId").GetString() ?? string.Empty;
+                ClientId = items[0].GetProperty("clientId").GetString() ?? string.Empty;
                 return;
             }
         }
