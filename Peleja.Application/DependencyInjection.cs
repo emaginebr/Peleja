@@ -5,11 +5,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Peleja.Application.Interfaces;
 using Peleja.Application.Services;
+using Peleja.Domain.Models;
 using Peleja.Domain.Services;
 using Peleja.Infra.Context;
 using Peleja.Infra.Repositories;
 using Peleja.Infra.AppServices;
-using Peleja.Domain.Models;
 using Peleja.Infra.Interfaces.Repositories;
 using Peleja.Infra.Interfaces.AppServices;
 
@@ -21,20 +21,9 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
         services.AddScoped<ITenantContext, TenantContext>();
 
-        // DbContext via factory (per-tenant connection string)
-        services.AddScoped(sp =>
-        {
-            var tenantContext = sp.GetRequiredService<ITenantContext>();
-            var connectionString = configuration[$"Tenants:{tenantContext.TenantId}:ConnectionString"];
-
-            if (string.IsNullOrEmpty(connectionString))
-                throw new InvalidOperationException(
-                    $"ConnectionString not found for tenant '{tenantContext.TenantId}'.");
-
-            var optionsBuilder = new DbContextOptionsBuilder<PelejaContext>();
-            optionsBuilder.UseNpgsql(connectionString);
-            return new PelejaContext(optionsBuilder.Options);
-        });
+        // DbContext
+        services.AddDbContext<PelejaContext>(options =>
+            options.UseNpgsql(configuration.GetConnectionString("PelejaContext")));
 
         // AutoMapper (scan profiles from Infra + Domain)
         services.AddAutoMapper(
@@ -42,6 +31,7 @@ public static class DependencyInjection
             typeof(Peleja.Domain.Mappings.CommentResultProfile));
 
         // Repositories
+        services.AddScoped<ISiteRepository<SiteModel>, SiteRepository>();
         services.AddScoped<IPageRepository<PageModel>, PageRepository>();
         services.AddScoped<ICommentRepository<CommentModel>, CommentRepository>();
         services.AddScoped<ICommentLikeRepository<CommentLikeModel>, CommentLikeRepository>();
@@ -50,6 +40,7 @@ public static class DependencyInjection
         services.AddScoped<IGiphyAppService, GiphyAppService>();
 
         // Domain Services
+        services.AddScoped<SiteService>();
         services.AddScoped<CommentService>();
         services.AddScoped<CommentLikeService>();
         services.AddScoped<GiphyService>();

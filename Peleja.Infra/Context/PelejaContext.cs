@@ -1,6 +1,7 @@
 namespace Peleja.Infra.Context;
 
 using Microsoft.EntityFrameworkCore;
+using Peleja.Domain.Enums;
 
 public class PelejaContext : DbContext
 {
@@ -8,6 +9,7 @@ public class PelejaContext : DbContext
     {
     }
 
+    public DbSet<Site> Sites { get; set; } = null!;
     public DbSet<Page> Pages { get; set; } = null!;
     public DbSet<Comment> Comments { get; set; } = null!;
     public DbSet<CommentLike> CommentLikes { get; set; } = null!;
@@ -16,20 +18,74 @@ public class PelejaContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        // ── Site ────────────────────────────────────────────────
+        modelBuilder.Entity<Site>(entity =>
+        {
+            entity.ToTable("peleja_sites");
+
+            entity.HasKey(e => e.SiteId)
+                .HasName("peleja_sites_pkey");
+
+            entity.Property(e => e.SiteId)
+                .HasColumnName("site_id")
+                .UseIdentityAlwaysColumn();
+
+            entity.Property(e => e.ClientId)
+                .HasColumnName("client_id")
+                .HasMaxLength(32)
+                .IsRequired();
+
+            entity.Property(e => e.SiteUrl)
+                .HasColumnName("site_url")
+                .HasMaxLength(2000)
+                .IsRequired();
+
+            entity.Property(e => e.Tenant)
+                .HasColumnName("tenant")
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(e => e.UserId)
+                .HasColumnName("user_id");
+
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .HasDefaultValue(SiteStatus.Active);
+
+            entity.Property(e => e.CreatedAt)
+                .HasColumnName("created_at")
+                .HasColumnType("timestamp without time zone");
+
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnName("updated_at")
+                .HasColumnType("timestamp without time zone");
+
+            entity.HasIndex(e => e.ClientId)
+                .IsUnique()
+                .HasDatabaseName("ix_peleja_sites_client_id");
+
+            entity.HasIndex(e => e.SiteUrl)
+                .IsUnique()
+                .HasDatabaseName("ix_peleja_sites_site_url");
+
+            entity.HasIndex(e => e.UserId)
+                .HasDatabaseName("ix_peleja_sites_user_id");
+        });
+
         // ── Page ────────────────────────────────────────────────
         modelBuilder.Entity<Page>(entity =>
         {
-            entity.ToTable("pages");
+            entity.ToTable("peleja_pages");
 
             entity.HasKey(e => e.PageId)
-                .HasName("pages_pkey");
+                .HasName("peleja_pages_pkey");
 
             entity.Property(e => e.PageId)
                 .HasColumnName("page_id")
                 .UseIdentityAlwaysColumn();
 
-            entity.Property(e => e.UserId)
-                .HasColumnName("user_id");
+            entity.Property(e => e.SiteId)
+                .HasColumnName("site_id");
 
             entity.Property(e => e.PageUrl)
                 .HasColumnName("page_url")
@@ -44,18 +100,18 @@ public class PelejaContext : DbContext
                 .HasColumnName("updated_at")
                 .HasColumnType("timestamp without time zone");
 
-            entity.HasIndex(e => e.PageUrl)
+            entity.HasIndex(e => new { e.SiteId, e.PageUrl })
                 .IsUnique()
-                .HasDatabaseName("ix_pages_page_url");
+                .HasDatabaseName("ix_peleja_pages_site_page_url");
         });
 
         // ── Comment ─────────────────────────────────────────────
         modelBuilder.Entity<Comment>(entity =>
         {
-            entity.ToTable("comments");
+            entity.ToTable("peleja_comments");
 
             entity.HasKey(e => e.CommentId)
-                .HasName("comments_pkey");
+                .HasName("peleja_comments_pkey");
 
             entity.Property(e => e.CommentId)
                 .HasColumnName("comment_id")
@@ -107,41 +163,41 @@ public class PelejaContext : DbContext
                 .WithMany(p => p.Comments)
                 .HasForeignKey(e => e.PageId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("fk_pages_comments");
+                .HasConstraintName("fk_peleja_pages_comments");
 
             entity.HasOne(e => e.ParentComment)
                 .WithMany(c => c.Replies)
                 .HasForeignKey(e => e.ParentCommentId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("fk_comments_comments");
+                .HasConstraintName("fk_peleja_comments_comments");
 
             entity.HasQueryFilter(c => !c.IsDeleted);
 
             entity.HasIndex(e => new { e.PageId, e.IsDeleted })
-                .HasDatabaseName("ix_comments_page");
+                .HasDatabaseName("ix_peleja_comments_page");
 
             entity.HasIndex(e => new { e.PageId, e.LikeCount, e.CommentId })
                 .IsDescending(false, true, true)
                 .HasFilter("is_deleted = false AND parent_comment_id IS NULL")
-                .HasDatabaseName("ix_comments_popular");
+                .HasDatabaseName("ix_peleja_comments_popular");
 
             entity.HasIndex(e => new { e.PageId, e.CommentId })
                 .IsDescending(false, true)
                 .HasFilter("is_deleted = false AND parent_comment_id IS NULL")
-                .HasDatabaseName("ix_comments_recent");
+                .HasDatabaseName("ix_peleja_comments_recent");
 
             entity.HasIndex(e => e.ParentCommentId)
                 .HasFilter("parent_comment_id IS NOT NULL")
-                .HasDatabaseName("ix_comments_parent");
+                .HasDatabaseName("ix_peleja_comments_parent");
         });
 
         // ── CommentLike ─────────────────────────────────────────
         modelBuilder.Entity<CommentLike>(entity =>
         {
-            entity.ToTable("comment_likes");
+            entity.ToTable("peleja_comment_likes");
 
             entity.HasKey(e => e.CommentLikeId)
-                .HasName("comment_likes_pkey");
+                .HasName("peleja_comment_likes_pkey");
 
             entity.Property(e => e.CommentLikeId)
                 .HasColumnName("comment_like_id")
@@ -161,11 +217,11 @@ public class PelejaContext : DbContext
                 .WithMany(c => c.CommentLikes)
                 .HasForeignKey(e => e.CommentId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("fk_comments_comment_likes");
+                .HasConstraintName("fk_peleja_comments_comment_likes");
 
             entity.HasIndex(e => new { e.CommentId, e.UserId })
                 .IsUnique()
-                .HasDatabaseName("ix_comment_likes_unique");
+                .HasDatabaseName("ix_peleja_comment_likes_unique");
         });
     }
 }

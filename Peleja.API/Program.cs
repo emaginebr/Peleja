@@ -70,6 +70,7 @@ if (app.Environment.IsDevelopment())
 app.UseCors();
 app.UseIpRateLimiting();
 app.UseMiddleware<TenantMiddleware>();
+app.UseMiddleware<ClientIdMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

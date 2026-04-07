@@ -1,0 +1,26 @@
+meta {
+  name: Create Site
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/sites
+  body: json
+  auth: bearer
+}
+
+headers {
+  X-Tenant-Id: {{tenantId}}
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "siteUrl": "https://myblog.com",
+    "tenant": "emagine"
+  }
+}

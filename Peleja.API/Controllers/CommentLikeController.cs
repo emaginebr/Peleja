@@ -26,6 +26,9 @@ public class CommentLikeController : ControllerBase
     {
         try
         {
+            if (HttpContext.Items.TryGetValue("SiteAllowsWrite", out var allows) && allows is bool val && !val)
+                return StatusCode(403, "Site is not accepting modifications");
+
             var userSession = _userClient.GetUserInSession(HttpContext);
             if (userSession == null)
                 return Unauthorized();

@@ -25,11 +25,11 @@ public class CommentService
     }
 
     public async Task<PaginatedResult<CommentResult>> GetByPageUrlAsync(
-        string pageUrl, string sortBy, long? cursor, int pageSize, long? currentUserId)
+        long siteId, string pageUrl, string sortBy, long? cursor, int pageSize, long? currentUserId)
     {
         pageSize = Math.Clamp(pageSize, 1, 50);
 
-        var page = await _pageRepository.GetByUrlAsync(pageUrl);
+        var page = await _pageRepository.GetByUrlAndSiteIdAsync(siteId, pageUrl);
         if (page == null)
             return new PaginatedResult<CommentResult> { Items = new(), HasMore = false };
 
@@ -62,7 +62,7 @@ public class CommentService
         };
     }
 
-    public async Task<CommentResult> CreateAsync(long userId, CommentInsertInfo info)
+    public async Task<CommentResult> CreateAsync(long siteId, long userId, CommentInsertInfo info)
     {
         if (string.IsNullOrWhiteSpace(info.Content))
             throw new ArgumentException("Content is required");
@@ -75,10 +75,10 @@ public class CommentService
         if (info.GifUrl != null && info.GifUrl.Length > 500)
             throw new ArgumentException("GIF URL must not exceed 500 characters");
 
-        var page = await _pageRepository.GetByUrlAsync(info.PageUrl);
+        var page = await _pageRepository.GetByUrlAndSiteIdAsync(siteId, info.PageUrl);
         if (page == null)
         {
-            page = PageModel.Create(userId, info.PageUrl);
+            page = PageModel.Create(siteId, info.PageUrl);
             page = await _pageRepository.CreateAsync(page);
         }
 
@@ -120,13 +120,15 @@ public class CommentService
         return await MapToResult(updated, userId);
     }
 
-    public async Task DeleteAsync(long commentId, long userId, bool isAdmin)
+    public async Task DeleteAsync(long commentId, long userId, bool isAdmin, long siteAdminUserId = 0)
     {
         var comment = await _commentRepository.GetByIdAsync(commentId);
         if (comment == null)
             throw new KeyNotFoundException("Comment not found");
 
-        if (!comment.IsOwnedBy(userId) && !isAdmin)
+        bool isSiteAdmin = siteAdminUserId > 0 && siteAdminUserId == userId;
+
+        if (!comment.IsOwnedBy(userId) && !isAdmin && !isSiteAdmin)
             throw new UnauthorizedAccessException("You do not have permission to delete this comment");
 
         comment.Delete();

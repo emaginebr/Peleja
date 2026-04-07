@@ -17,11 +17,11 @@ public class PageRepository : IPageRepository<PageModel>
         _mapper = mapper;
     }
 
-    public async Task<PageModel?> GetByUrlAsync(string pageUrl)
+    public async Task<PageModel?> GetByUrlAndSiteIdAsync(long siteId, string pageUrl)
     {
         var entity = await _context.Pages
             .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.PageUrl == pageUrl);
+            .FirstOrDefaultAsync(p => p.SiteId == siteId && p.PageUrl == pageUrl);
 
         return entity != null ? _mapper.Map<PageModel>(entity) : null;
     }

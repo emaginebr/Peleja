@@ -1,136 +1,124 @@
-# Authentication and Multi-Tenant Flow
+# Authentication and Site Resolution
 
-This document describes the authentication pipeline and multi-tenant architecture used by the Peleja API.
+This document describes the authentication pipeline and site resolution used by the Peleja API.
 
 ---
 
-## Multi-Tenant Architecture
+## Site Resolution via X-Client-Id
+
+### ClientIdMiddleware
+
+Comment, like, and giphy endpoints require the `X-Client-Id` header with a valid ClientId (assigned when a site is registered).
+
+**Header**: `X-Client-Id: {client_id}`
+
+The middleware:
+
+1. Looks up the `Site` by `ClientId`.
+2. Validates the site's `Status` (Active/Inactive/Blocked).
+3. Resolves the `Tenant` from the site for NAuth JWT validation.
+4. Stores `TenantId`, `SiteId`, and `SiteUserId` in `HttpContext.Items`.
+
+If the site is **Blocked**, returns **403**. If `X-Client-Id` is missing or invalid, downstream endpoints return **400**.
 
 ### TenantMiddleware
 
-Every API request must include the `X-Tenant-Id` header with a valid tenant slug.
-
-**Header**: `X-Tenant-Id: {tenant_slug}`
-
-The middleware performs the following steps in order:
-
-1. **Validates** that the `X-Tenant-Id` header is present in the request.
-2. **Looks up** the tenant by slug in the database.
-3. **Verifies** that the tenant is active (`is_active = true`).
-4. **Propagates** a scoped `TenantContext` containing the resolved `tenant_id` for use by downstream services.
-
-Error responses use the ProblemDetails format (`application/problem+json`):
-
-If the header is missing:
-
-```json
-{
-  "status": 400,
-  "title": "Bad Request",
-  "detail": "Header X-Tenant-Id e obrigatorio"
-}
-```
-
-If the tenant slug is invalid or the tenant is inactive:
-
-```json
-{
-  "status": 400,
-  "title": "Bad Request",
-  "detail": "Tenant nao encontrado ou inativo"
-}
-```
-
-Both cases return HTTP **400 Bad Request**.
-
-### Tenant Isolation
-
-Each tenant has its own:
-- NAuth API URL and API key for authentication
-- Set of users, comments, and likes scoped to that tenant
-- Moderator assignments independent of other tenants
+Site admin endpoints (`/api/v1/sites`) use `X-Tenant-Id` header directly, since these requests may not have a `ClientId` yet (e.g., site registration).
 
 ---
 
-## NAuth Basic Authentication
+## NAuth JWT Authentication
 
-Authentication is handled through NAuth, an external authentication service. Each tenant configures its own NAuth instance.
+Authentication is handled through NAuth. The tenant's JWT secret is resolved via `ITenantSecretProvider` based on the tenant identified by the site or header.
 
 ### Authentication Header
 
 ```
-Authorization: Basic {token}
+Authorization: Bearer {jwt_token}
 ```
 
-The `{token}` is a Base64-encoded credential provided by NAuth.
+### Flow
 
-### Authentication Flow
+1. **ClientIdMiddleware** resolves the site and tenant from `X-Client-Id` (or **TenantMiddleware** from `X-Tenant-Id`).
+2. **NAuthHandler** calls `ITenantSecretProvider.GetJwtSecret(tenantId)` to get the tenant's secret.
+3. The JWT signature is validated.
+4. If valid, the user session is available via `IUserClient.GetUserInSession(HttpContext)`.
 
-1. The **TenantMiddleware** identifies the tenant via the `X-Tenant-Id` header.
-2. The **NAuthHandler** reads the tenant's `nauth_api_url` and `nauth_api_key` from the resolved `TenantContext`.
-3. The handler validates the `Authorization: Basic {token}` header against the tenant's NAuth API.
-4. If the token is valid, the user identity is established with claims (`UserId`, `Role`).
-5. If the token is invalid or missing on a protected endpoint, the request is rejected with **401 Unauthorized**.
+### User Session
 
-### Claims
-
-After successful authentication, the following claims are available on the `User` principal:
-
-| Claim    | Type   | Description                      |
-|----------|--------|----------------------------------|
-| `UserId` | long   | Internal user ID within Peleja   |
-| `Role`   | int    | User role (1 = User, 2 = Moderator) |
+| Property | Type | Description |
+|----------|------|-------------|
+| `UserId` | long | User ID from NAuth |
+| `Name` | string | Display name |
+| `Email` | string | Email |
+| `IsAdmin` | bool | Admin privileges |
+| `ImageUrl` | string | Avatar URL |
 
 ---
 
-## Auto-Provisioning of Users
+## Tenant Configuration
 
-When a user authenticates for the first time against a given tenant, the system automatically creates a local `User` record using data returned by NAuth. This is called auto-provisioning.
+Tenants are configured in `appsettings.json`. The `Tenant` field on each Site determines which NAuth config to use.
 
-- **Default role**: `User` (role = 1)
-- **Provisioned data**: Display name, avatar URL, and external NAuth identifier
-- **No manual registration** is required; the user record is created transparently on first login
+```json
+{
+  "NAuth": {
+    "ApiURL": "http://nauth-api:80",
+    "JwtSecret": "default-secret",
+    "BucketName": "Peleja"
+  },
+  "Tenants": {
+    "emagine": {
+      "JwtSecret": "emagine-specific-secret",
+      "BucketName": "Peleja"
+    }
+  }
+}
+```
 
 ---
 
-## User Roles
+## Permissions
 
-| Role      | Value | Permissions                                                    |
-|-----------|-------|----------------------------------------------------------------|
-| User      | 1     | Create, edit, and delete own comments; like/unlike comments    |
-| Moderator | 2     | All User permissions plus delete any comment within the tenant |
+| Action | Allowed |
+|--------|---------|
+| Register site | Authenticated users (with `X-Tenant-Id`) |
+| List/update site | Site owner only |
+| List comments | Anyone (with valid `X-Client-Id`, site Active or Inactive) |
+| Create/edit comment | Authenticated users (site must be Active) |
+| Delete comment | Comment author, NAuth admin, or site owner |
+| Like/unlike | Authenticated users (site must be Active) |
+| Search GIFs | Authenticated users |
 
-Role promotion from User to Moderator is performed through administrative configuration and is not exposed via the public API.
+---
+
+## Site Status Access Control
+
+| Status     | GET (reads) | POST/PUT/DELETE (writes) |
+|------------|-------------|--------------------------|
+| `Active`   | Allowed     | Allowed                  |
+| `Inactive` | Allowed     | 403 Forbidden            |
+| `Blocked`  | 403 Forbidden | 403 Forbidden          |
 
 ---
 
 ## Rate Limiting
 
-The API enforces rate limiting on write operations to prevent abuse.
-
-### Rules
-
 - **Write endpoints** (`POST *`): 30 requests per minute per IP.
-- When the limit is exceeded, the API returns **429 Too Many Requests** with a `Retry-After` header.
-
-### 429 Response
-
-```
-HTTP/1.1 429 Too Many Requests
-Retry-After: 30
-```
-
-Clients should respect the `Retry-After` header value (in seconds) before retrying the request.
+- Exceeded: **429 Too Many Requests** with `Retry-After` header.
 
 ---
 
-## Endpoint Authentication Summary
+## Endpoint Summary
 
-| Endpoint                               | Authentication |
-|----------------------------------------|----------------|
-| `GET /api/v1/comments`                 | Optional       |
-| `POST /api/v1/comments`               | Required       |
-| `PUT /api/v1/comments/{commentId}`     | Required       |
-| `DELETE /api/v1/comments/{commentId}`  | Required       |
-| `POST /api/v1/comments/{commentId}/like` | Required     |
-| `GET /api/v1/giphy/search`            | Required       |
+| Endpoint | Header | Auth |
+|----------|--------|------|
+| `POST /api/v1/sites` | `X-Tenant-Id` | Required |
+| `GET /api/v1/sites` | `X-Tenant-Id` | Required |
+| `PUT /api/v1/sites/{siteId}` | `X-Tenant-Id` | Required |
+| `GET /api/v1/comments` | `X-Client-Id` | Optional |
+| `POST /api/v1/comments` | `X-Client-Id` | Required |
+| `PUT /api/v1/comments/{id}` | `X-Client-Id` | Required |
+| `DELETE /api/v1/comments/{id}` | `X-Client-Id` | Required |
+| `POST /api/v1/comments/{id}/like` | `X-Client-Id` | Required |
+| `GET /api/v1/giphy/search` | `X-Client-Id` | Required |

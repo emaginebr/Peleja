@@ -1,149 +1,109 @@
 # Peleja API Documentation
 
-Peleja is a multi-tenant comments widget backend built with .NET 8. It provides RESTful endpoints for managing comments, likes, and GIF search across multiple tenant sites.
+Peleja is a comments widget backend built with .NET 8. It provides RESTful endpoints for managing sites, comments, likes, and GIF search.
 
 ---
 
 ## API Endpoints
 
-| Method   | Path                                    | Auth     | Description                        |
-|----------|-----------------------------------------|----------|------------------------------------|
-| `GET`    | `/api/v1/comments`                      | Optional | List comments for a page (paginated) |
-| `POST`   | `/api/v1/comments`                      | Required | Create a new comment or reply      |
-| `PUT`    | `/api/v1/comments/{commentId}`          | Required | Edit an existing comment           |
-| `DELETE` | `/api/v1/comments/{commentId}`          | Required | Soft-delete a comment              |
-| `POST`   | `/api/v1/comments/{commentId}/like`     | Required | Toggle like on a comment           |
-| `GET`    | `/api/v1/giphy/search`                  | Required | Search for GIFs                    |
+### Site Management
+
+| Method   | Path                           | Header         | Auth     | Description                     |
+|----------|--------------------------------|----------------|----------|---------------------------------|
+| `POST`   | `/api/v1/sites`                | `X-Tenant-Id`  | Required | Register a new site             |
+| `GET`    | `/api/v1/sites`                | `X-Tenant-Id`  | Required | List authenticated user's sites |
+| `PUT`    | `/api/v1/sites/{siteId}`       | `X-Tenant-Id`  | Required | Update a site (owner only)      |
+
+### Comments & Likes
+
+| Method   | Path                                    | Header         | Auth     | Description                        |
+|----------|-----------------------------------------|----------------|----------|------------------------------------|
+| `GET`    | `/api/v1/comments`                      | `X-Client-Id`  | Optional | List comments for a page (paginated) |
+| `POST`   | `/api/v1/comments`                      | `X-Client-Id`  | Required | Create a new comment or reply      |
+| `PUT`    | `/api/v1/comments/{commentId}`          | `X-Client-Id`  | Required | Edit an existing comment           |
+| `DELETE` | `/api/v1/comments/{commentId}`          | `X-Client-Id`  | Required | Soft-delete a comment              |
+| `POST`   | `/api/v1/comments/{commentId}/like`     | `X-Client-Id`  | Required | Toggle like on a comment           |
+
+### GIF Search
+
+| Method   | Path                                    | Header         | Auth     | Description                        |
+|----------|-----------------------------------------|----------------|----------|------------------------------------|
+| `GET`    | `/api/v1/giphy/search`                  | `X-Client-Id`  | Required | Search for GIFs                    |
 
 ## Controller Documentation
 
+- [SiteController](site-controller.md) -- Register, list, and update sites
 - [CommentController](comment-controller.md) -- List, create, update, and delete comments
 - [CommentLikeController](comment-like-controller.md) -- Toggle likes on comments
 - [GiphyController](giphy-controller.md) -- Search for GIFs via Giphy
-- [Authentication and Multi-Tenant Flow](authentication.md) -- Authentication, tenant resolution, roles, and rate limiting
+- [Authentication Flow](authentication.md) -- Authentication, site resolution, and rate limiting
 
 ---
 
 ## Authentication Flow
 
-All requests must include the `X-Tenant-Id` header to identify the tenant. Authenticated endpoints additionally require the `Authorization: Basic {token}` header.
+- **Site management endpoints** require `X-Tenant-Id` header (identifies which NAuth tenant to authenticate against).
+- **Comment/like/giphy endpoints** require `X-Client-Id` header (identifies the site; the tenant is resolved from the site's `Tenant` field).
 
-1. The client sends a request with `X-Tenant-Id: {tenant_slug}`.
-2. The **TenantMiddleware** resolves the tenant and verifies it is active.
-3. For protected endpoints, the **NAuthHandler** validates the `Authorization` header against the tenant's NAuth API.
-4. If the user does not exist locally, a `User` record is auto-provisioned with the default `User` role.
-5. The request proceeds to the controller with the tenant context and user identity established.
+1. The client sends `X-Client-Id: {client_id}` (or `X-Tenant-Id` for site endpoints).
+2. The **ClientIdMiddleware** looks up the Site by `ClientId`, validates its status, and resolves the tenant for NAuth.
+3. The **NAuthHandler** validates the JWT token using the tenant's JWT secret.
+4. The user session is established via `IUserClient.GetUserInSession()`.
 
-For full details, see [Authentication and Multi-Tenant Flow](authentication.md).
+For full details, see [Authentication Flow](authentication.md).
 
 ---
 
-## Multi-Tenant Model
+## Site & Tenant Model
 
-Each tenant represents an independent site or application that uses the Peleja comments widget. Tenants are identified by a unique slug passed in the `X-Tenant-Id` header.
+- **Tenant**: An NAuth configuration (JwtSecret, BucketName). Configured in `appsettings.json` under `Tenants`.
+- **Site**: A registered website. Has a unique `ClientId`, `SiteUrl`, `Tenant` (for NAuth config), `UserId` (owner), and `Status`.
+- **Page**: A specific URL within a site where comments are posted.
 
-- **Tenant isolation**: Comments, users, likes, and moderator assignments are scoped per tenant.
-- **Per-tenant auth**: Each tenant configures its own NAuth API URL and API key.
-- **Tenant activation**: Only active tenants (`is_active = true`) can receive API requests.
+All data is stored in a single PostgreSQL database.
+
+### Site Status
+
+| Status     | Reads | Writes | Description                              |
+|------------|-------|--------|------------------------------------------|
+| `Active`   | Yes   | Yes    | Full read and write access               |
+| `Inactive` | Yes   | No     | Read-only; write requests return 403     |
+| `Blocked`  | No    | No     | All requests return 403                  |
 
 ---
 
 ## Response Format
 
-The API follows standard .NET conventions:
-
-- **Success responses** return the data directly in the response body (no wrapper).
-- **Error responses** use the [RFC 7807 Problem Details](https://datatracker.ietf.org/doc/html/rfc7807) format (`application/problem+json`).
-
-**Success example** (GET /api/v1/comments):
-
-```json
-{
-  "items": [
-    {
-      "commentId": 42,
-      "content": "Great article!",
-      "likeCount": 5,
-      "isLikedByUser": true,
-      "author": { "userId": 1, "displayName": "Joao Silva" },
-      "replies": []
-    }
-  ],
-  "nextCursor": "41",
-  "hasMore": true
-}
-```
-
-**Error example** (ProblemDetails):
-
-```json
-{
-  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
-  "title": "Bad Request",
-  "status": 400,
-  "detail": "O conteudo deve ter no maximo 2000 caracteres"
-}
-```
+- **Success responses** return the data directly (no wrapper).
+- **Error responses** use [RFC 7807 Problem Details](https://datatracker.ietf.org/doc/html/rfc7807) format.
 
 ---
 
 ## Quick Start
 
-### List comments (no authentication required)
+### Register a site
 
 ```bash
-curl -X GET "https://api.example.com/api/v1/comments?pageUrl=https://site.com/blog/post-1&pageSize=10" \
-  -H "X-Tenant-Id: my-site"
+curl -X POST "http://localhost:5000/api/v1/sites" \
+  -H "X-Tenant-Id: emagine" \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{ "siteUrl": "https://mysite.com", "tenant": "emagine" }'
+```
+
+### List comments
+
+```bash
+curl -X GET "http://localhost:5000/api/v1/comments?pageUrl=https://mysite.com/post-1" \
+  -H "X-Client-Id: {client_id}"
 ```
 
 ### Create a comment
 
 ```bash
-curl -X POST "https://api.example.com/api/v1/comments" \
-  -H "X-Tenant-Id: my-site" \
-  -H "Authorization: Basic dXNlcjpwYXNz" \
+curl -X POST "http://localhost:5000/api/v1/comments" \
+  -H "X-Client-Id: {client_id}" \
+  -H "Authorization: Bearer {token}" \
   -H "Content-Type: application/json" \
-  -d '{
-    "pageUrl": "https://site.com/blog/post-1",
-    "content": "Great article!",
-    "gifUrl": null,
-    "parentCommentId": null
-  }'
-```
-
-### Toggle a like
-
-```bash
-curl -X POST "https://api.example.com/api/v1/comments/42/like" \
-  -H "X-Tenant-Id: my-site" \
-  -H "Authorization: Basic dXNlcjpwYXNz"
-```
-
-### Search for GIFs
-
-```bash
-curl -X GET "https://api.example.com/api/v1/giphy/search?q=celebration&limit=5" \
-  -H "X-Tenant-Id: my-site" \
-  -H "Authorization: Basic dXNlcjpwYXNz"
-```
-
-### Edit a comment
-
-```bash
-curl -X PUT "https://api.example.com/api/v1/comments/45" \
-  -H "X-Tenant-Id: my-site" \
-  -H "Authorization: Basic dXNlcjpwYXNz" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "content": "Updated content",
-    "gifUrl": null
-  }'
-```
-
-### Delete a comment
-
-```bash
-curl -X DELETE "https://api.example.com/api/v1/comments/45" \
-  -H "X-Tenant-Id: my-site" \
-  -H "Authorization: Basic dXNlcjpwYXNz"
+  -d '{ "pageUrl": "https://mysite.com/post-1", "content": "Great article!" }'
 ```
