@@ -8,13 +8,12 @@ services:
       - "${APP_PORT:-5000}:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Docker
+      ConnectionStrings__PelejaContext: ${CONNECTION_STRING}
       NAuth__ApiURL: ${NAUTH_API_URL}
       NAuth__JwtSecret: ${JWT_SECRET}
       NAuth__BucketName: ${BUCKET_NAME}
-      Tenants__emagine__ConnectionString: ${CONNECTION_STRING}
       Tenants__emagine__JwtSecret: ${JWT_SECRET}
       Tenants__emagine__BucketName: ${BUCKET_NAME}
-      Tenants__peleja__ConnectionString: ${CONNECTION_STRING}
       Tenants__peleja__JwtSecret: ${JWT_SECRET}
       Tenants__peleja__BucketName: ${BUCKET_NAME}
       GIPHY_API_KEY: ${GIPHY_API_KEY}

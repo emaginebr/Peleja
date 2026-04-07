@@ -1,9 +1,9 @@
 # CommentLikeController API Reference
 
 **Base Path**: `/api/v1/comments/{commentId}/like`
-**Required Header**: `X-Tenant-Id: {tenant_slug}`
+**Required Header**: `X-Client-Id: {client_id}`
 
-All endpoints require the `X-Tenant-Id` header. The TenantMiddleware validates the header and resolves the tenant context before the request reaches the controller.
+All like endpoints require the `X-Client-Id` header with the site's Client ID (GUID). The site must have an **Active** status for like operations.
 
 ---
 
@@ -11,7 +11,7 @@ All endpoints require the `X-Tenant-Id` header. The TenantMiddleware validates t
 
 Toggles a like on a comment. If the user has already liked the comment, the like is removed. If the user has not liked the comment, a like is added.
 
-**Authentication**: Required (`Authorization: Basic {token}`)
+**Authentication**: Required (`Authorization: Bearer {token}`)
 
 ### Path Parameters
 
@@ -21,7 +21,7 @@ Toggles a like on a comment. If the user has already liked the comment, the like
 
 ### Response 200 (Like added)
 
-Returns a `CommentLikeResult` directly:
+Returns a `CommentLikeResult`:
 
 ```json
 {
@@ -43,8 +43,9 @@ Returns a `CommentLikeResult` directly:
 
 ### Error Responses
 
-| Status | Description           |
-|--------|-----------------------|
-| 401    | Not authenticated     |
-| 404    | Comment not found     |
-| 500    | Internal server error |
+| Status | Description                |
+|--------|----------------------------|
+| 401    | Not authenticated          |
+| 403    | Site is Inactive or Blocked |
+| 404    | Comment not found          |
+| 500    | Internal server error      |

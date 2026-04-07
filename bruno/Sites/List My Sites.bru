@@ -1,0 +1,19 @@
+meta {
+  name: List My Sites
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/sites
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Tenant-Id: {{tenantId}}
+}
+
+auth:bearer {
+  token: {{token}}
+}

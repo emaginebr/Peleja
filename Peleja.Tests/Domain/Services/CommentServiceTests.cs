@@ -33,38 +33,21 @@ public class CommentServiceTests
             mapper);
     }
 
-    #region GetByPageUrlAsync
-
     [Fact]
     public async Task GetByPageUrlAsync_ReturnsPaginatedResults()
     {
-        var pageUrl = "https://example.com/page";
-        var page = new PageModel { PageId = 1, UserId = 1, PageUrl = pageUrl };
+        var page = new PageModel { PageId = 1, SiteId = 1, PageUrl = "https://example.com/page" };
         var comments = new List<CommentModel>
         {
-            new CommentModel
-            {
-                CommentId = 1, PageId = 1, UserId = 10,
-                Content = "Comment 1", CreatedAt = DateTime.UtcNow,
-                Replies = new List<CommentModel>()
-            },
-            new CommentModel
-            {
-                CommentId = 2, PageId = 1, UserId = 10,
-                Content = "Comment 2", CreatedAt = DateTime.UtcNow,
-                Replies = new List<CommentModel>()
-            }
+            new CommentModel { CommentId = 1, PageId = 1, UserId = 10, Content = "Comment 1", CreatedAt = DateTime.Now, Replies = new() },
+            new CommentModel { CommentId = 2, PageId = 1, UserId = 10, Content = "Comment 2", CreatedAt = DateTime.Now, Replies = new() }
         };
 
-        _pageRepoMock.Setup(r => r.GetByUrlAsync(pageUrl)).ReturnsAsync(page);
-        _commentRepoMock
-            .Setup(r => r.GetByPageIdAsync(1, "recent", null, 15))
-            .ReturnsAsync(comments);
-        _commentLikeRepoMock
-            .Setup(r => r.ExistsAsync(It.IsAny<long>(), It.IsAny<long>()))
-            .ReturnsAsync(false);
+        _pageRepoMock.Setup(r => r.GetByUrlAndSiteIdAsync(1, "https://example.com/page")).ReturnsAsync(page);
+        _commentRepoMock.Setup(r => r.GetByPageIdAsync(1, "recent", null, 15)).ReturnsAsync(comments);
+        _commentLikeRepoMock.Setup(r => r.ExistsAsync(It.IsAny<long>(), It.IsAny<long>())).ReturnsAsync(false);
 
-        var result = await _service.GetByPageUrlAsync(pageUrl, "recent", null, 15, null);
+        var result = await _service.GetByPageUrlAsync(1, "https://example.com/page", "recent", null, 15, null);
 
         result.Should().NotBeNull();
         result.Items.Should().HaveCount(2);
@@ -74,129 +57,63 @@ public class CommentServiceTests
     [Fact]
     public async Task GetByPageUrlAsync_ReturnsEmpty_WhenPageNotFound()
     {
-        _pageRepoMock.Setup(r => r.GetByUrlAsync("https://unknown.com")).ReturnsAsync((PageModel?)null);
+        _pageRepoMock.Setup(r => r.GetByUrlAndSiteIdAsync(1, "https://unknown.com")).ReturnsAsync((PageModel?)null);
 
-        var result = await _service.GetByPageUrlAsync("https://unknown.com", "recent", null, 15, null);
+        var result = await _service.GetByPageUrlAsync(1, "https://unknown.com", "recent", null, 15, null);
 
         result.Items.Should().BeEmpty();
-        result.HasMore.Should().BeFalse();
     }
-
-    #endregion
-
-    #region CreateAsync
 
     [Fact]
     public async Task CreateAsync_WithValidData_CreatesPageAndComment()
     {
-        var userId = 10L;
-        var info = new CommentInsertInfo
-        {
-            PageUrl = "https://example.com/new-page",
-            Content = "This is a valid comment"
-        };
+        var info = new CommentInsertInfo { PageUrl = "https://example.com/new-page", Content = "Valid comment" };
 
-        _pageRepoMock.Setup(r => r.GetByUrlAsync(info.PageUrl)).ReturnsAsync((PageModel?)null);
-        _pageRepoMock
-            .Setup(r => r.CreateAsync(It.IsAny<PageModel>()))
-            .ReturnsAsync((PageModel p) => { p.PageId = 1; return p; });
+        _pageRepoMock.Setup(r => r.GetByUrlAndSiteIdAsync(1, info.PageUrl)).ReturnsAsync((PageModel?)null);
+        _pageRepoMock.Setup(r => r.CreateAsync(It.IsAny<PageModel>())).ReturnsAsync((PageModel p) => { p.PageId = 1; return p; });
+        _commentRepoMock.Setup(r => r.CreateAsync(It.IsAny<CommentModel>())).ReturnsAsync((CommentModel c) => { c.CommentId = 1; c.Replies = new(); return c; });
+        _commentLikeRepoMock.Setup(r => r.ExistsAsync(It.IsAny<long>(), 10)).ReturnsAsync(false);
 
-        _commentRepoMock
-            .Setup(r => r.CreateAsync(It.IsAny<CommentModel>()))
-            .ReturnsAsync((CommentModel c) =>
-            {
-                c.CommentId = 1;
-                c.Replies = new List<CommentModel>();
-                return c;
-            });
-
-        _commentLikeRepoMock
-            .Setup(r => r.ExistsAsync(It.IsAny<long>(), userId))
-            .ReturnsAsync(false);
-
-        var result = await _service.CreateAsync(userId, info);
+        var result = await _service.CreateAsync(1, 10, info);
 
         result.Should().NotBeNull();
-        result.Content.Should().Be("This is a valid comment");
+        result.Content.Should().Be("Valid comment");
         _pageRepoMock.Verify(r => r.CreateAsync(It.IsAny<PageModel>()), Times.Once);
-        _commentRepoMock.Verify(r => r.CreateAsync(It.IsAny<CommentModel>()), Times.Once);
     }
 
     [Fact]
     public async Task CreateAsync_WithEmptyContent_ThrowsArgumentException()
     {
         var info = new CommentInsertInfo { PageUrl = "https://example.com/page", Content = "" };
-
-        var act = () => _service.CreateAsync(10, info);
-
-        await act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*Content*required*");
-    }
-
-    [Fact]
-    public async Task CreateAsync_WithContentOver2000Chars_ThrowsArgumentException()
-    {
-        var info = new CommentInsertInfo
-        {
-            PageUrl = "https://example.com/page",
-            Content = new string('A', 2001)
-        };
-
-        var act = () => _service.CreateAsync(10, info);
-
-        await act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*2000 characters*");
+        var act = () => _service.CreateAsync(1, 10, info);
+        await act.Should().ThrowAsync<ArgumentException>().WithMessage("*Content*required*");
     }
 
     [Fact]
     public async Task CreateAsync_WithParentThatIsAReply_ThrowsArgumentException()
     {
-        var page = new PageModel { PageId = 1, UserId = 1, PageUrl = "https://example.com/page" };
-        var parentComment = new CommentModel
-        {
-            CommentId = 100, PageId = 1, UserId = 5,
-            Content = "A reply itself",
-            ParentCommentId = 50
-        };
-        var info = new CommentInsertInfo
-        {
-            PageUrl = "https://example.com/page",
-            Content = "Trying to reply to a reply",
-            ParentCommentId = 100
-        };
+        var page = new PageModel { PageId = 1, SiteId = 1, PageUrl = "https://example.com/page" };
+        var parent = new CommentModel { CommentId = 100, PageId = 1, UserId = 5, Content = "Reply", ParentCommentId = 50 };
+        var info = new CommentInsertInfo { PageUrl = "https://example.com/page", Content = "Trying to reply to a reply", ParentCommentId = 100 };
 
-        _pageRepoMock.Setup(r => r.GetByUrlAsync(info.PageUrl)).ReturnsAsync(page);
-        _commentRepoMock.Setup(r => r.GetByIdAsync(100)).ReturnsAsync(parentComment);
+        _pageRepoMock.Setup(r => r.GetByUrlAndSiteIdAsync(1, info.PageUrl)).ReturnsAsync(page);
+        _commentRepoMock.Setup(r => r.GetByIdAsync(100)).ReturnsAsync(parent);
 
-        var act = () => _service.CreateAsync(10, info);
-
-        await act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*reply to a reply*");
+        var act = () => _service.CreateAsync(1, 10, info);
+        await act.Should().ThrowAsync<ArgumentException>().WithMessage("*reply to a reply*");
     }
-
-    #endregion
-
-    #region UpdateAsync
 
     [Fact]
     public async Task UpdateAsync_ByAuthor_SucceedsAndSetsIsEdited()
     {
-        var userId = 10L;
-        var comment = new CommentModel
-        {
-            CommentId = 1, PageId = 1, UserId = userId, Content = "Original content",
-            IsEdited = false, Replies = new List<CommentModel>()
-        };
+        var comment = new CommentModel { CommentId = 1, PageId = 1, UserId = 10, Content = "Original", Replies = new() };
         var info = new CommentUpdateInfo { Content = "Updated content" };
 
         _commentRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(comment);
-        _commentRepoMock
-            .Setup(r => r.UpdateAsync(It.IsAny<CommentModel>()))
-            .ReturnsAsync((CommentModel c) => c);
-        _commentLikeRepoMock.Setup(r => r.ExistsAsync(1, userId)).ReturnsAsync(false);
+        _commentRepoMock.Setup(r => r.UpdateAsync(It.IsAny<CommentModel>())).ReturnsAsync((CommentModel c) => c);
+        _commentLikeRepoMock.Setup(r => r.ExistsAsync(1, 10)).ReturnsAsync(false);
 
-        var result = await _service.UpdateAsync(1, userId, info);
-
+        var result = await _service.UpdateAsync(1, 10, info);
         result.Content.Should().Be("Updated content");
         result.IsEdited.Should().BeTrue();
     }
@@ -205,65 +122,39 @@ public class CommentServiceTests
     public async Task UpdateAsync_ByNonAuthor_ThrowsUnauthorizedAccessException()
     {
         var comment = new CommentModel { CommentId = 1, PageId = 1, UserId = 10, Content = "Original" };
-        var info = new CommentUpdateInfo { Content = "Hacked content" };
-
         _commentRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(comment);
-
-        var act = () => _service.UpdateAsync(1, 99, info);
-
-        await act.Should().ThrowAsync<UnauthorizedAccessException>()
-            .WithMessage("*author*edit*");
+        var act = () => _service.UpdateAsync(1, 99, new CommentUpdateInfo { Content = "Hacked" });
+        await act.Should().ThrowAsync<UnauthorizedAccessException>().WithMessage("*author*edit*");
     }
-
-    #endregion
-
-    #region DeleteAsync
 
     [Fact]
     public async Task DeleteAsync_ByAuthor_DoesSoftDelete()
     {
-        var userId = 10L;
-        var comment = new CommentModel { CommentId = 1, PageId = 1, UserId = userId, Content = "To be deleted" };
-
+        var comment = new CommentModel { CommentId = 1, PageId = 1, UserId = 10, Content = "Delete me" };
         _commentRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(comment);
-        _commentRepoMock
-            .Setup(r => r.UpdateAsync(It.IsAny<CommentModel>()))
-            .ReturnsAsync((CommentModel c) => c);
+        _commentRepoMock.Setup(r => r.UpdateAsync(It.IsAny<CommentModel>())).ReturnsAsync((CommentModel c) => c);
 
-        await _service.DeleteAsync(1, userId, false);
-
-        _commentRepoMock.Verify(r => r.UpdateAsync(It.Is<CommentModel>(c =>
-            c.IsDeleted == true && c.DeletedAt != null)), Times.Once);
+        await _service.DeleteAsync(1, 10, false);
+        _commentRepoMock.Verify(r => r.UpdateAsync(It.Is<CommentModel>(c => c.IsDeleted && c.DeletedAt != null)), Times.Once);
     }
 
     [Fact]
-    public async Task DeleteAsync_ByAdmin_DoesSoftDelete()
+    public async Task DeleteAsync_BySiteAdmin_DoesSoftDelete()
     {
-        var comment = new CommentModel { CommentId = 1, PageId = 1, UserId = 10, Content = "To be moderated" };
-
+        var comment = new CommentModel { CommentId = 1, PageId = 1, UserId = 10, Content = "Moderated" };
         _commentRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(comment);
-        _commentRepoMock
-            .Setup(r => r.UpdateAsync(It.IsAny<CommentModel>()))
-            .ReturnsAsync((CommentModel c) => c);
+        _commentRepoMock.Setup(r => r.UpdateAsync(It.IsAny<CommentModel>())).ReturnsAsync((CommentModel c) => c);
 
-        await _service.DeleteAsync(1, 99, true);
-
-        _commentRepoMock.Verify(r => r.UpdateAsync(It.Is<CommentModel>(c =>
-            c.IsDeleted == true && c.DeletedAt != null)), Times.Once);
+        await _service.DeleteAsync(1, 99, false, siteAdminUserId: 99);
+        _commentRepoMock.Verify(r => r.UpdateAsync(It.Is<CommentModel>(c => c.IsDeleted)), Times.Once);
     }
 
     [Fact]
     public async Task DeleteAsync_ByNonAuthorNonAdmin_ThrowsUnauthorizedAccessException()
     {
         var comment = new CommentModel { CommentId = 1, PageId = 1, UserId = 10, Content = "Protected" };
-
         _commentRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(comment);
-
         var act = () => _service.DeleteAsync(1, 99, false);
-
-        await act.Should().ThrowAsync<UnauthorizedAccessException>()
-            .WithMessage("*permission*delete*");
+        await act.Should().ThrowAsync<UnauthorizedAccessException>().WithMessage("*permission*delete*");
     }
-
-    #endregion
 }

@@ -34,6 +34,12 @@ public class CommentController : ControllerBase
             if (string.IsNullOrWhiteSpace(pageUrl))
                 return BadRequest("The pageUrl parameter is required");
 
+            var siteId = GetSiteId();
+            if (siteId == 0)
+                return BadRequest("The X-Client-Id header is required");
+
+            if (!SiteAllowsWrite() && false) { } // read is always allowed if not blocked (middleware handles blocked)
+
             long? currentUserId = null;
             var userSession = _userClient.GetUserInSession(HttpContext);
             if (userSession != null)
@@ -44,7 +50,7 @@ public class CommentController : ControllerBase
                 cursorValue = cv;
 
             var result = await _commentService.GetByPageUrlAsync(
-                pageUrl, sortBy, cursorValue, pageSize, currentUserId);
+                siteId, pageUrl, sortBy, cursorValue, pageSize, currentUserId);
 
             return Ok(result);
         }
@@ -61,11 +67,17 @@ public class CommentController : ControllerBase
     {
         try
         {
+            var siteId = GetSiteId();
+            if (siteId == 0)
+                return BadRequest("The X-Client-Id header is required");
+            if (!SiteAllowsWrite())
+                return StatusCode(403, "Site is not accepting new comments");
+
             var userSession = _userClient.GetUserInSession(HttpContext);
             if (userSession == null)
                 return Unauthorized();
 
-            var result = await _commentService.CreateAsync(userSession.UserId, info);
+            var result = await _commentService.CreateAsync(siteId, userSession.UserId, info);
 
             return CreatedAtAction(nameof(GetComments), new { pageUrl = info.PageUrl }, result);
         }
@@ -90,6 +102,9 @@ public class CommentController : ControllerBase
     {
         try
         {
+            if (!SiteAllowsWrite())
+                return StatusCode(403, "Site is not accepting modifications");
+
             var userSession = _userClient.GetUserInSession(HttpContext);
             if (userSession == null)
                 return Unauthorized();
@@ -123,11 +138,15 @@ public class CommentController : ControllerBase
     {
         try
         {
+            if (!SiteAllowsWrite())
+                return StatusCode(403, "Site is not accepting modifications");
+
             var userSession = _userClient.GetUserInSession(HttpContext);
             if (userSession == null)
                 return Unauthorized();
 
-            await _commentService.DeleteAsync(commentId, userSession.UserId, userSession.IsAdmin);
+            var siteAdminUserId = GetSiteAdminUserId();
+            await _commentService.DeleteAsync(commentId, userSession.UserId, userSession.IsAdmin, siteAdminUserId);
 
             return NoContent();
         }
@@ -144,5 +163,26 @@ public class CommentController : ControllerBase
             _logger.LogError(ex, "Error deleting comment {CommentId}", commentId);
             return StatusCode(500, ex.Message);
         }
+    }
+
+    private long GetSiteId()
+    {
+        if (HttpContext.Items.TryGetValue("SiteId", out var siteId) && siteId is long id)
+            return id;
+        return 0;
+    }
+
+    private long GetSiteAdminUserId()
+    {
+        if (HttpContext.Items.TryGetValue("SiteUserId", out var userId) && userId is long id)
+            return id;
+        return 0;
+    }
+
+    private bool SiteAllowsWrite()
+    {
+        if (HttpContext.Items.TryGetValue("SiteAllowsWrite", out var allows) && allows is bool val)
+            return val;
+        return false;
     }
 }

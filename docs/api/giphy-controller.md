@@ -1,9 +1,9 @@
 # GiphyController API Reference
 
 **Base Path**: `/api/v1/giphy`
-**Required Header**: `X-Tenant-Id: {tenant_slug}`
+**Required Header**: `X-Client-Id: {client_id}`
 
-All endpoints require the `X-Tenant-Id` header. The TenantMiddleware validates the header and resolves the tenant context before the request reaches the controller.
+All Giphy endpoints require the `X-Client-Id` header with the site's Client ID (GUID).
 
 ---
 
@@ -11,19 +11,19 @@ All endpoints require the `X-Tenant-Id` header. The TenantMiddleware validates t
 
 Searches for GIFs on Giphy by a search term. This endpoint proxies requests to the Giphy API using server-side credentials, so the Giphy API key is never exposed to clients.
 
-**Authentication**: Required (`Authorization: Basic {token}`)
+**Authentication**: Required (`Authorization: Bearer {token}`)
 
 ### Query Parameters
 
 | Parameter | Type   | Required | Default | Description                        |
 |-----------|--------|----------|---------|------------------------------------|
 | `q`       | string | Yes      | --      | Search term                        |
-| `limit`   | int    | No       | `20`    | Number of results to return (max 50) |
+| `limit`   | int    | No       | `20`    | Number of results to return (clamped 1-50) |
 | `offset`  | int    | No       | `0`     | Offset for pagination              |
 
 ### Response 200 (Results found)
 
-Returns a `GiphySearchResult` directly:
+Returns a `GiphySearchResult`:
 
 ```json
 {
@@ -70,6 +70,6 @@ Returns a `GiphySearchResult` directly:
   "type": "https://tools.ietf.org/html/rfc9110#section-15.6.4",
   "title": "An error occurred while processing your request.",
   "status": 503,
-  "detail": "Servico de GIFs temporariamente indisponivel. Tente novamente em alguns instantes."
+  "detail": "GIF service temporarily unavailable. Please try again later."
 }
 ```

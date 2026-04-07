@@ -1,5 +1,6 @@
 namespace Peleja.Tests.API.Config;
 
+using System.Text.Json;
 using Flurl;
 using Flurl.Http;
 using Microsoft.Extensions.Configuration;
@@ -8,6 +9,7 @@ public class AuthFixture : IAsyncLifetime
 {
     public string BaseUrl { get; private set; } = string.Empty;
     public string AuthToken { get; private set; } = string.Empty;
+    public string ClientId { get; private set; } = string.Empty;
 
     private IConfiguration _configuration = null!;
     private string _userAgent = "Peleja.ApiTests/1.0";
@@ -49,6 +51,46 @@ public class AuthFixture : IAsyncLifetime
         {
             throw new Exception($"Failed to authenticate for API tests. Status: {ex.StatusCode}. Ensure the Auth API is running at {authBaseUrl}", ex);
         }
+
+        await ResolveClientIdAsync();
+    }
+
+    private async Task ResolveClientIdAsync()
+    {
+        // List user's sites and use the first one
+        var listResponse = await CreateTenantRequest("/api/v1/sites")
+            .WithOAuthBearerToken(AuthToken)
+            .AllowAnyHttpStatus()
+            .GetAsync();
+
+        if (listResponse.StatusCode == 200)
+        {
+            var json = await listResponse.GetStringAsync();
+            var sites = JsonDocument.Parse(json).RootElement;
+
+            if (sites.GetArrayLength() > 0)
+            {
+                ClientId = sites[0].GetProperty("clientId").GetString() ?? string.Empty;
+                return;
+            }
+        }
+
+        // No sites found — create one
+        var createResponse = await CreateTenantRequest("/api/v1/sites")
+            .WithOAuthBearerToken(AuthToken)
+            .AllowAnyHttpStatus()
+            .PostJsonAsync(new
+            {
+                siteUrl = $"https://test-{Guid.NewGuid():N}.example.com",
+                tenant = _tenant
+            });
+
+        if (createResponse.StatusCode != 201)
+            throw new Exception($"Failed to create test site. Status: {createResponse.StatusCode}");
+
+        var createJson = await createResponse.GetStringAsync();
+        ClientId = JsonDocument.Parse(createJson).RootElement.GetProperty("clientId").GetString()
+            ?? throw new Exception("Created site returned null clientId");
     }
 
     public Task DisposeAsync() => Task.CompletedTask;
@@ -58,12 +100,21 @@ public class AuthFixture : IAsyncLifetime
         return new Url(BaseUrl)
             .AppendPathSegment(path)
             .WithOAuthBearerToken(AuthToken)
-            .WithHeader("X-Tenant-Id", _tenant)
+            .WithHeader("X-Client-Id", ClientId)
             .WithHeader("User-Agent", _userAgent)
             .WithHeader("X-Device-Fingerprint", _deviceFingerprint);
     }
 
     public IFlurlRequest CreateAnonymousRequest(string path)
+    {
+        return new Url(BaseUrl)
+            .AppendPathSegment(path)
+            .WithHeader("X-Client-Id", ClientId)
+            .WithHeader("User-Agent", _userAgent)
+            .WithHeader("X-Device-Fingerprint", _deviceFingerprint);
+    }
+
+    public IFlurlRequest CreateTenantRequest(string path)
     {
         return new Url(BaseUrl)
             .AppendPathSegment(path)

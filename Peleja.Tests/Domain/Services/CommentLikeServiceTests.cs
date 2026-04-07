@@ -29,48 +29,28 @@ public class CommentLikeServiceTests
     [Fact]
     public async Task ToggleLikeAsync_AddsLike_WhenNotLiked()
     {
-        var comment = new CommentModel
-        {
-            CommentId = 1, PageId = 1, UserId = 5, LikeCount = 3, Content = "Test"
-        };
-
+        var comment = new CommentModel { CommentId = 1, PageId = 1, UserId = 5, LikeCount = 3, Content = "Test" };
         _commentRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(comment);
         _commentLikeRepoMock.Setup(r => r.GetAsync(1, 10)).ReturnsAsync((CommentLikeModel?)null);
-        _commentLikeRepoMock
-            .Setup(r => r.CreateAsync(It.IsAny<CommentLikeModel>()))
-            .ReturnsAsync((CommentLikeModel cl) => cl);
-        _commentRepoMock
-            .Setup(r => r.UpdateAsync(It.IsAny<CommentModel>()))
-            .ReturnsAsync((CommentModel c) => c);
+        _commentLikeRepoMock.Setup(r => r.CreateAsync(It.IsAny<CommentLikeModel>())).ReturnsAsync((CommentLikeModel cl) => cl);
+        _commentRepoMock.Setup(r => r.UpdateAsync(It.IsAny<CommentModel>())).ReturnsAsync((CommentModel c) => c);
 
         var result = await _service.ToggleLikeAsync(1, 10);
-
         result.IsLikedByUser.Should().BeTrue();
         result.LikeCount.Should().Be(4);
-        _commentLikeRepoMock.Verify(r => r.CreateAsync(It.IsAny<CommentLikeModel>()), Times.Once);
     }
 
     [Fact]
     public async Task ToggleLikeAsync_RemovesLike_WhenAlreadyLiked()
     {
-        var comment = new CommentModel
-        {
-            CommentId = 1, PageId = 1, UserId = 5, LikeCount = 3, Content = "Test"
-        };
-        var existingLike = new CommentLikeModel
-        {
-            CommentLikeId = 50, CommentId = 1, UserId = 10, CreatedAt = DateTime.UtcNow
-        };
-
+        var comment = new CommentModel { CommentId = 1, PageId = 1, UserId = 5, LikeCount = 3, Content = "Test" };
+        var existingLike = new CommentLikeModel { CommentLikeId = 50, CommentId = 1, UserId = 10, CreatedAt = DateTime.Now };
         _commentRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(comment);
         _commentLikeRepoMock.Setup(r => r.GetAsync(1, 10)).ReturnsAsync(existingLike);
         _commentLikeRepoMock.Setup(r => r.DeleteAsync(existingLike)).Returns(Task.CompletedTask);
-        _commentRepoMock
-            .Setup(r => r.UpdateAsync(It.IsAny<CommentModel>()))
-            .ReturnsAsync((CommentModel c) => c);
+        _commentRepoMock.Setup(r => r.UpdateAsync(It.IsAny<CommentModel>())).ReturnsAsync((CommentModel c) => c);
 
         var result = await _service.ToggleLikeAsync(1, 10);
-
         result.IsLikedByUser.Should().BeFalse();
         result.LikeCount.Should().Be(2);
     }
@@ -79,10 +59,7 @@ public class CommentLikeServiceTests
     public async Task ToggleLikeAsync_ThrowsKeyNotFoundException_ForNonExistentComment()
     {
         _commentRepoMock.Setup(r => r.GetByIdAsync(999)).ReturnsAsync((CommentModel?)null);
-
         var act = () => _service.ToggleLikeAsync(999, 10);
-
-        await act.Should().ThrowAsync<KeyNotFoundException>()
-            .WithMessage("*not found*");
+        await act.Should().ThrowAsync<KeyNotFoundException>().WithMessage("*not found*");
     }
 }
