@@ -82,14 +82,12 @@ Peleja/
 ```mermaid
 flowchart TD
     Client["Client (Browser/Widget)"] -->|"X-Client-Id + Bearer Token"| API["Peleja API (.NET 8)"]
-    API -->|"Resolve Site"| DB_S["PostgreSQL (peleja_shared)"]
-    API -->|"JWT Validation"| NAuth["NAuth API"]
+    API -->|"JWT Validation (per-tenant secret)"| NAuth["NAuth API"]
     API -->|"GIF Search"| Giphy["Giphy API"]
-    API -->|"Tenant: emagine"| DB_E["PostgreSQL (peleja_emagine)"]
-    API -->|"Tenant: peleja"| DB_P["PostgreSQL (peleja_peleja)"]
+    API -->|"Read / Write"| DB["PostgreSQL"]
 ```
 
-The widget sends `X-Client-Id` header. The API resolves the Site from the shared database, determines the tenant, validates JWT tokens via NAuth's `ITenantSecretProvider`, and routes operations to the tenant-specific PostgreSQL database.
+The widget sends `X-Client-Id` header. The API resolves the Site, determines the tenant for NAuth JWT validation, and reads/writes from a single PostgreSQL database.
 
 > Source: [`docs/system-design.mmd`](docs/system-design.mmd)
 
@@ -124,7 +122,6 @@ POSTGRES_USER=postgres
 POSTGRES_PASSWORD=your_password_here
 POSTGRES_DB=peleja
 CONNECTION_STRING=Host=db;Port=5432;Database=peleja;Username=postgres;Password=your_password_here
-SHARED_CONNECTION_STRING=Host=db;Port=5432;Database=peleja_shared;Username=postgres;Password=your_password_here
 
 # NAuth
 NAUTH_API_URL=http://nauth-api:80
@@ -295,17 +292,13 @@ Open the `bruno/` directory in [Bruno](https://www.usebruno.com/) for manual API
 ### Backup
 
 ```bash
-pg_dump -U postgres peleja_shared > backup_shared.sql
-pg_dump -U postgres peleja_emagine > backup_emagine.sql
-pg_dump -U postgres peleja_peleja > backup_peleja.sql
+pg_dump -U postgres peleja > backup_peleja.sql
 ```
 
 ### Restore
 
 ```bash
-psql -U postgres peleja_shared < backup_shared.sql
-psql -U postgres peleja_emagine < backup_emagine.sql
-psql -U postgres peleja_peleja < backup_peleja.sql
+psql -U postgres peleja < backup_peleja.sql
 ```
 
 ---
