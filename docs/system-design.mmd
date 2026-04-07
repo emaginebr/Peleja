@@ -5,26 +5,16 @@ flowchart TD
 
     subgraph emagine-network["emagine-network (Docker)"]
         API["⚙️ Peleja API\n(.NET 8)"]
-
-        DB_S["🗄️ PostgreSQL\n(peleja_shared)\nSites"]
-
-        subgraph Tenants["Multi-Tenant Databases"]
-            DB_E["🗄️ PostgreSQL\n(peleja_emagine)"]
-            DB_P["🗄️ PostgreSQL\n(peleja_peleja)"]
-        end
+        DB["🗄️ PostgreSQL\nSites, Pages,\nComments, Likes"]
     end
 
     Client -->|"X-Client-Id\nBearer Token"| API
-    API -->|"Resolve Site\n→ Tenant"| DB_S
-    API -->|"JWT Validation\nUser Session"| NAuth
+    API -->|"JWT Validation\n(per-tenant secret)"| NAuth
     API -->|"GIF Search"| Giphy
-    API -->|"Tenant: emagine"| DB_E
-    API -->|"Tenant: peleja"| DB_P
+    API -->|"Read / Write"| DB
 
     style API fill:#512BD4,color:#fff
     style NAuth fill:#2D9CDB,color:#fff
     style Giphy fill:#00C853,color:#fff
-    style DB_S fill:#FF6F00,color:#fff
-    style DB_E fill:#336791,color:#fff
-    style DB_P fill:#336791,color:#fff
+    style DB fill:#336791,color:#fff
     style Client fill:#FF6F00,color:#fff
